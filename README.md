@@ -19,7 +19,9 @@
 
 ### 起動方法
 
-ES Modules を使用しているため、ローカルサーバーが必要です：
+**GitHub Pages（推奨）**：リポジトリ Settings → Pages から main ブランチを公開するだけで動きます。
+
+**ローカルで動かす場合**：ES Modules は `file://` で開くと動かないため、簡易サーバーが必要です：
 
 ```bash
 # Python 3
