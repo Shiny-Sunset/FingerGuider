@@ -1,0 +1,202 @@
+const N_SEGS = 8;
+const SEG_GAP = 13;
+const AVOID_R = 90;
+const CURL_R = 35;
+const CURL_DUR = 2500;
+const BASE_SPEED = 1.8;
+
+export class Isopod {
+  constructor(canvas) {
+    this.w = canvas.width;
+    this.h = canvas.height;
+    this.angle = Math.random() * Math.PI * 2;
+    this.x = this.w / 2 + (Math.random() - 0.5) * 100;
+    this.y = this.h / 2 + (Math.random() - 0.5) * 100;
+    this.segs = this._initSegs();
+    this.state = 'walk';
+    this.curlT = 0;
+  }
+
+  _initSegs() {
+    return Array.from({ length: N_SEGS }, (_, i) => ({
+      x: this.x - Math.cos(this.angle) * SEG_GAP * i,
+      y: this.y - Math.sin(this.angle) * SEG_GAP * i,
+    }));
+  }
+
+  update(dt, lines) {
+    if (this.state === 'curled') {
+      this.curlT += dt;
+      if (this.curlT >= CURL_DUR) {
+        this.state = 'walk';
+        this.curlT = 0;
+      }
+      return;
+    }
+
+    let avoidX = 0, avoidY = 0;
+    let closestDist = Infinity;
+
+    for (const line of lines) {
+      if (line.points.length < 2) continue;
+      const d = line.distanceTo(this.x, this.y);
+      if (d < closestDist) closestDist = d;
+      if (d < AVOID_R) {
+        const dir = line.avoidDirection(this.x, this.y);
+        const str = (1 - d / AVOID_R) ** 2;
+        avoidX += dir.x * str;
+        avoidY += dir.y * str;
+      }
+    }
+
+    if (closestDist < CURL_R) {
+      this.state = 'curled';
+      this.curlT = 0;
+      return;
+    }
+
+    this.state = (avoidX !== 0 || avoidY !== 0) ? 'avoid' : 'walk';
+    this.angle += (Math.random() - 0.5) * 0.08;
+
+    if (avoidX !== 0 || avoidY !== 0) {
+      const targetAngle = Math.atan2(avoidY, avoidX);
+      this.angle = lerpAngle(this.angle, targetAngle, 0.15);
+    }
+
+    const step = BASE_SPEED * (dt / 16.667);
+    this.x += Math.cos(this.angle) * step;
+    this.y += Math.sin(this.angle) * step;
+
+    const m = 25;
+    if (this.x < m)           { this.x = m;           this.angle = Math.PI - this.angle; }
+    if (this.x > this.w - m)  { this.x = this.w - m;  this.angle = Math.PI - this.angle; }
+    if (this.y < m)           { this.y = m;           this.angle = -this.angle; }
+    if (this.y > this.h - m)  { this.y = this.h - m;  this.angle = -this.angle; }
+
+    this.segs[0].x = this.x;
+    this.segs[0].y = this.y;
+    for (let i = 1; i < N_SEGS; i++) {
+      const p = this.segs[i - 1], c = this.segs[i];
+      const dx = c.x - p.x, dy = c.y - p.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > SEG_GAP) {
+        const r = SEG_GAP / dist;
+        c.x = p.x + dx * r;
+        c.y = p.y + dy * r;
+      }
+    }
+  }
+
+  draw(ctx) {
+    if (this.state === 'curled') {
+      this._drawCurled(ctx);
+    } else {
+      this._drawWalking(ctx);
+    }
+  }
+
+  _drawWalking(ctx) {
+    for (let i = N_SEGS - 1; i >= 0; i--) {
+      const { x, y } = this.segs[i];
+      const size = 13 - i * 0.9;
+
+      let segAngle = this.angle;
+      if (i < N_SEGS - 1) {
+        const dx = this.segs[i].x - this.segs[i + 1].x;
+        const dy = this.segs[i].y - this.segs[i + 1].y;
+        if (Math.hypot(dx, dy) > 0.1) segAngle = Math.atan2(dy, dx);
+      }
+
+      ctx.beginPath();
+      ctx.ellipse(x, y, size, size * 0.72, segAngle, 0, Math.PI * 2);
+      ctx.fillStyle = `hsl(28, 38%, ${i === 0 ? 28 : Math.min(44, 36 + i)}%)`;
+      ctx.fill();
+      ctx.strokeStyle = 'hsl(28, 30%, 18%)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      if (i > 0 && i < N_SEGS - 1) {
+        const anim = Math.sin(Date.now() * 0.008 + i * 1.2) * 0.25;
+        for (const s of [-1, 1]) {
+          const baseAngle = segAngle + s * (Math.PI / 2);
+          ctx.beginPath();
+          ctx.moveTo(
+            x + Math.cos(baseAngle) * size * 0.7,
+            y + Math.sin(baseAngle) * size * 0.7
+          );
+          ctx.lineTo(
+            x + Math.cos(baseAngle) * size * 0.7 + Math.cos(baseAngle + anim * s) * size * 0.9,
+            y + Math.sin(baseAngle) * size * 0.7 + Math.sin(baseAngle + anim * s) * size * 0.9
+          );
+          ctx.strokeStyle = 'hsl(28, 30%, 20%)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+    }
+
+    const head = this.segs[0];
+
+    for (const s of [-1, 1]) {
+      const ex = head.x + Math.cos(this.angle + s * 0.55) * 7;
+      const ey = head.y + Math.sin(this.angle + s * 0.55) * 7;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(ex + 0.7, ey - 0.7, 0.8, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fill();
+    }
+
+    for (const s of [-1, 1]) {
+      const a0 = this.angle + s * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(head.x + Math.cos(a0) * 8, head.y + Math.sin(a0) * 8);
+      ctx.quadraticCurveTo(
+        head.x + Math.cos(a0 + s * 0.3) * 16,
+        head.y + Math.sin(a0 + s * 0.3) * 16,
+        head.x + Math.cos(a0 + s * 0.2) * 24,
+        head.y + Math.sin(a0 + s * 0.2) * 24
+      );
+      ctx.strokeStyle = 'hsl(28, 30%, 20%)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+  }
+
+  _drawCurled(ctx) {
+    const t = Math.min(this.curlT / 300, 1);
+    const head = this.segs[0];
+    const r = 16 + t * 3;
+
+    const grad = ctx.createRadialGradient(head.x - 4, head.y - 4, 2, head.x, head.y, r);
+    grad.addColorStop(0, 'hsl(28, 40%, 48%)');
+    grad.addColorStop(1, 'hsl(28, 40%, 26%)');
+
+    ctx.beginPath();
+    ctx.arc(head.x, head.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.strokeStyle = 'hsl(28, 30%, 16%)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(head.x, head.y);
+    ctx.strokeStyle = 'hsl(28, 30%, 22%)';
+    ctx.lineWidth = 0.8;
+    for (let i = 1; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.arc(0, 0, r * (0.28 + i * 0.22), Math.PI * 0.1, Math.PI * 1.75);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function lerpAngle(a, b, t) {
+  const diff = ((b - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+  return a + diff * t;
+}
