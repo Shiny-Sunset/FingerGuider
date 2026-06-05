@@ -19,7 +19,7 @@
 
 ### 起動方法
 
-**GitHub Pages（推奨）**： 次のページで起動できます`https://shiny-sunset.github.io/FingerGuider/`
+**GitHub Pages（推奨）**： 次のページで起動できます [https://shiny-sunset.github.io/FingerGuider/](https://shiny-sunset.github.io/FingerGuider/)
 
 **ローカルで動かす場合**：ES Modules は `file://` で開くと動かないため、簡易サーバーが必要です：
 
