@@ -1,58 +1,61 @@
 # FingerGuider — ちびキャラちょっかいアプリ
 
-カメラで人差し指を検知し、Canvas に描いた線でちびキャラをインタラクティブに操作できる Web アプリ。
+カメラで人差し指を検知し、Canvas に描いた線でダンゴムシをインタラクティブに操作できる Web アプリ。
 
 ---
 
-## Phase 1：ダンゴムシシミュレーション（プロトタイプ）
+## 操作方法
 
-本番アプリ前のコアロジック検証。Mediapipe なし・マウス操作で挙動と Canvas レンダリングを先に固める。
+画面右上のボタンでマウスモードと指モードを切り替えられます。
 
-### 操作方法
+| ボタン表示 | 入力方法 |
+|---|---|
+| 🖱 マウスモード | マウスドラッグで線を描画 |
+| ☝ 指モード | 人差し指を立ててカメラに向けると線を描画 |
 
 | 操作 | 効果 |
-|------|------|
-| マウスドラッグ | 青い線を描画 |
-| 線に近づく | ダンゴムシが線から逃げる |
+|---|---|
+| 線を描く | ダンゴムシが線から逃げる |
 | 線に強く接触 | 丸まる（2.5秒後に展開） |
 | 線は5秒でフェードアウト | — |
 
-### 起動方法
+### 指モードのジェスチャー
 
-**GitHub Pages（推奨）**： 次のページで起動できます [https://shiny-sunset.github.io/FingerGuider/](https://shiny-sunset.github.io/FingerGuider/)
+| ジェスチャー | 効果 |
+|---|---|
+| 人差し指を立てる（Pointing_Up） | 線を描画・指先が赤丸で強調表示 |
+| それ以外（グー・パーなど） | 描画停止 |
 
-**ローカルで動かす場合**：ES Modules は `file://` で開くと動かないため、簡易サーバーが必要です：
+---
+
+## 起動方法
+
+**GitHub Pages**： [https://shiny-sunset.github.io/FingerGuider/](https://shiny-sunset.github.io/FingerGuider/)
+
+**ローカルで動かす場合**：
 
 ```bash
-# Python 3
-python -m http.server 8080
-
-# Node.js
-npx serve .
+npm install
+npm run dev
 ```
 
-ブラウザで `http://localhost:8080` を開く。
+ブラウザで `http://localhost:5173` を開く。
 
-### 技術スタック
+---
+
+## 技術スタック
 
 - Canvas 2D API
-- バニラ JavaScript（ES Modules）
-- マウス / タッチイベント
+- Vanilla JavaScript（ES Modules）
+- [MediaPipe Tasks Vision](https://developers.google.com/mediapipe/solutions/vision/gesture_recognizer) — ジェスチャー認識・手のランドマーク検出
+- [Vite](https://vitejs.dev/) — ビルドツール
 
 ---
 
 ## 開発フェーズ
 
 | フェーズ | 内容 | 状態 |
-|----------|------|------|
-| Phase 1 | ダンゴムシシミュレーション | 🚧 進行中 |
-| Phase 2 | ちびキャラ置換・Mediapipe Hands 統合 | 予定 |
-| Phase 3 | 閉じ込め判定・感情表現・UI 整備 | 予定 |
-
-## ブランチ運用
-
-| ブランチ | 用途 |
-|----------|------|
-| `main` | 安定版・デモ用 |
-| `dev` | 開発統合ブランチ |
-| `feature/xxx` | 機能単位の作業ブランチ |
+|---|---|---|
+| Phase 1 | ダンゴムシシミュレーション（マウス操作） | ✅ 完了 |
+| Phase 2 | MediaPipe 統合・指で線を引く・手のスケルトン表示 | ✅ 完了 |
+| Phase 3 | ちびキャラ置換・閉じ込め判定・感情表現 | 予定 |
