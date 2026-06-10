@@ -15,6 +15,34 @@ canvas {
   cursor: crosshair;
 }
 
+#camera {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+  transform: scaleX(-1);
+  border-radius: 8px;
+  opacity: 0.85;
+}
+
+#modeBtn {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#modeBtn:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
 #ui {
   position: fixed;
   bottom: 20px;

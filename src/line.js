@@ -1,4 +1,4 @@
-const MAX_AGE = 5000;
+const MAX_AGE = 1000;
 
 export class Line {
   constructor() {
@@ -38,10 +38,15 @@ export class Line {
 
   avoidDirection(px, py) {
     let minD = Infinity;
-    let cx = 0, cy = 0;
+    let cx = 0,
+      cy = 0;
     for (let i = 0; i < this.points.length - 1; i++) {
       const r = segClosest(px, py, this.points[i], this.points[i + 1]);
-      if (r.dist < minD) { minD = r.dist; cx = r.cx; cy = r.cy; }
+      if (r.dist < minD) {
+        minD = r.dist;
+        cx = r.cx;
+        cy = r.cy;
+      }
     }
     const len = Math.hypot(px - cx, py - cy);
     if (len < 0.001) return { x: 1, y: 0 };
@@ -50,10 +55,15 @@ export class Line {
 }
 
 function segClosest(px, py, a, b) {
-  const dx = b.x - a.x, dy = b.y - a.y;
+  const dx = b.x - a.x,
+    dy = b.y - a.y;
   const lenSq = dx * dx + dy * dy;
-  const t = lenSq < 1e-10 ? 0 : Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / lenSq));
-  const cx = a.x + t * dx, cy = a.y + t * dy;
+  const t =
+    lenSq < 1e-10
+      ? 0
+      : Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / lenSq));
+  const cx = a.x + t * dx,
+    cy = a.y + t * dy;
   return { dist: Math.hypot(px - cx, py - cy), cx, cy };
 }
 

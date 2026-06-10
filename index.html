@@ -7,9 +7,11 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <video id="camera" width="320" height="180" playsinline></video>
   <canvas id="canvas"></canvas>
+  <button id="modeBtn">🖱 マウスモード</button>
   <div id="ui">
-    <p>マウスをドラッグして線を引いてみよう</p>
+    <p id="uiText">マウスをドラッグして線を引いてみよう</p>
   </div>
   <script type="module" src="src/main.js"></script>
 </body>
