@@ -8,4 +8,5 @@ Thumbs.db
 
 # Dependencies (for future use)
 node_modules/
+dist/
 ref/
