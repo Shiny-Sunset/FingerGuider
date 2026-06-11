@@ -38,8 +38,8 @@ export class Renderer {
     }
   }
 
-  drawIsopod(isopod) {
-    isopod.draw(this.ctx);
+  drawIsopod(_isopod) {
+    // 3D レンダラーに委譲
   }
 
   drawHand(landmarks, isPointing) {

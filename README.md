@@ -1,23 +1,35 @@
-# FingerGuider — ちびキャラちょっかいアプリ
+# FingerGuider — ダンゴムシちょっかいアプリ
 
-カメラで人差し指を検知し、Canvas に描いた線でダンゴムシをインタラクティブに操作できる Web アプリ。
+マウスまたはカメラの人差し指で線を引き、3Dダンゴムシをインタラクティブに操作できる Web アプリ。
+
+**デモ：** [https://shiny-sunset.github.io/FingerGuider/](https://shiny-sunset.github.io/FingerGuider/)
 
 ---
 
 ## 操作方法
 
-画面右上のボタンでマウスモードと指モードを切り替えられます。
+### モード切り替え
 
-| ボタン表示 | 入力方法 |
+画面右上の `🖱 マウスモード` / `☝ 指モード` ボタンで入力方法を切り替えます。
+
+| モード | 入力方法 |
 |---|---|
 | 🖱 マウスモード | マウスドラッグで線を描画 |
 | ☝ 指モード | 人差し指を立ててカメラに向けると線を描画 |
 
-| 操作 | 効果 |
+### ダンゴムシの数を調整
+
+画面右上の `−` `＋` ボタンで 1〜10 匹の間で増減できます。
+
+### ダンゴムシの反応
+
+| 操作 | 反応 |
 |---|---|
-| 線を描く | ダンゴムシが線から逃げる |
-| 線に強く接触 | 丸まる（2.5秒後に展開） |
-| 線は5秒でフェードアウト | — |
+| 線を近づける（90px 以内） | 逃げる方向に進路変更 |
+| 線に強く接触（35px 以内） | まるまるアニメーション再生・停止（2.5 秒） |
+| 線が消えたあと | のびるアニメーション再生後に歩き出す |
+| ダンゴムシ同士が接近 | お互いに反発して避け合う |
+| 線は 5 秒でフェードアウト | — |
 
 ### 指モードのジェスチャー
 
@@ -30,10 +42,6 @@
 
 ## 起動方法
 
-**GitHub Pages**： [https://shiny-sunset.github.io/FingerGuider/](https://shiny-sunset.github.io/FingerGuider/)
-
-**ローカルで動かす場合**：
-
 ```bash
 npm install
 npm run dev
@@ -45,10 +53,33 @@ npm run dev
 
 ## 技術スタック
 
-- Canvas 2D API
-- Vanilla JavaScript（ES Modules）
-- [MediaPipe Tasks Vision](https://developers.google.com/mediapipe/solutions/vision/gesture_recognizer) — ジェスチャー認識・手のランドマーク検出
-- [Vite](https://vitejs.dev/) — ビルドツール
+| 技術 | 用途 |
+|---|---|
+| [Vite](https://vitejs.dev/) | ビルドツール |
+| Vanilla JavaScript（ES Modules） | アプリロジック全般 |
+| Canvas 2D API | 背景・線・手のスケルトン描画 |
+| [Three.js](https://threejs.org/) | 3D ダンゴムシモデルのレンダリング |
+| [MediaPipe Tasks Vision](https://developers.google.com/mediapipe/solutions/vision/gesture_recognizer) | ジェスチャー認識・手のランドマーク検出 |
+
+---
+
+## ファイル構成
+
+```
+FingerGuider/
+├── index.html
+├── style.css
+├── vite.config.js
+├── model/
+│   └── dangomushi.glb        # ダンゴムシ 3D モデル
+└── src/
+    ├── main.js               # エントリポイント・イベント管理
+    ├── character.js          # Isopod クラス（物理・ステートマシン）
+    ├── line.js               # 描画線の管理・距離判定
+    ├── handInput.js          # MediaPipe ラッパー
+    ├── renderer.js           # Canvas 2D 描画
+    └── isopodRenderer3D.js   # Three.js 3D レンダラー（全匹共有）
+```
 
 ---
 
@@ -56,6 +87,6 @@ npm run dev
 
 | フェーズ | 内容 | 状態 |
 |---|---|---|
-| Phase 1 | ダンゴムシシミュレーション（マウス操作） | ✅ 完了 |
-| Phase 2 | MediaPipe 統合・指で線を引く・手のスケルトン表示 | ✅ 完了 |
-| Phase 3 | ちびキャラ置換・閉じ込め判定・感情表現 | 予定 |
+| Phase 1 | ダンゴムシシミュレーション（Canvas 2D・マウス操作） | ✅ 完了 |
+| Phase 2 | MediaPipe 統合・3D モデル化・複数匹・衝突挙動 | ✅ 完了 |
+| Phase 3 | ちびキャラへのモデル差し替え・感情表現 | 予定 |

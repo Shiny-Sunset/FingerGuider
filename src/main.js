@@ -2,13 +2,36 @@ import { Line } from "./line.js";
 import { Isopod } from "./character.js";
 import { Renderer } from "./renderer.js";
 import { HandInput } from "./handInput.js";
+import { IsopodRenderer3D } from "./isopodRenderer3D.js";
 
 const canvas = document.getElementById("canvas");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 const renderer = new Renderer(canvas);
-const isopod = new Isopod(canvas);
+const isopodRenderer3D = new IsopodRenderer3D(canvas);
+
+const isopods = [];
+
+function addIsopod() {
+  if (isopods.length >= 10) return;
+  isopods.push(new Isopod(canvas));
+  isopodRenderer3D.addIsopod();
+  updateCount();
+}
+
+function removeIsopod() {
+  if (isopods.length <= 1) return;
+  isopods.pop();
+  isopodRenderer3D.removeIsopod();
+  updateCount();
+}
+
+function updateCount() {
+  document.getElementById("countDisplay").textContent = isopods.length;
+}
+
+addIsopod(); // 初期1匹
 
 const lines = [];
 let activeLine = null;
@@ -22,7 +45,7 @@ handInput
   .catch((err) => console.warn("カメラ初期化失敗（マウス操作で代替）:", err));
 
 // モード切り替え
-let mode = "mouse"; // 'mouse' | 'finger'
+let mode = "mouse";
 const modeBtn = document.getElementById("modeBtn");
 const uiText = document.getElementById("uiText");
 
@@ -43,7 +66,10 @@ function setMode(next) {
 modeBtn.addEventListener("click", () =>
   setMode(mode === "mouse" ? "finger" : "mouse"),
 );
-setMode("mouse"); // 初期状態
+setMode("mouse");
+
+document.getElementById("incBtn").addEventListener("click", addIsopod);
+document.getElementById("decBtn").addEventListener("click", removeIsopod);
 
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
@@ -109,15 +135,17 @@ canvas.addEventListener("touchend", () => {
 window.addEventListener("resize", () => {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  isopod.w = canvas.width;
-  isopod.h = canvas.height;
+  for (const iso of isopods) {
+    iso.w = canvas.width;
+    iso.h = canvas.height;
+  }
+  isopodRenderer3D.resize(canvas.width, canvas.height);
 });
 
 function loop(ts) {
   const dt = lastTime == null ? 16.667 : Math.min(ts - lastTime, 100);
   lastTime = ts;
 
-  // MediaPipe 指入力（指モードのときのみ）
   const hand =
     mode === "finger" ? handInput.detect(canvas.width, canvas.height) : null;
   if (hand?.gesture === "pointing") {
@@ -135,11 +163,20 @@ function loop(ts) {
     if (lines[i].expired) lines.splice(i, 1);
   }
 
-  isopod.update(dt, lines);
+  // 各ダンゴムシの物理更新（uncurl中はスキップ）
+  for (let i = 0; i < isopods.length; i++) {
+    if (isopodRenderer3D.isUncurlingAt(i)) continue;
+    const others = isopods.filter((_, j) => j !== i);
+    isopods[i].update(dt, lines, others);
+  }
 
   renderer.drawBackground();
   renderer.drawLines(lines);
-  renderer.drawIsopod(isopod);
+  for (const iso of isopods) renderer.drawIsopod(iso);
+
+  isopodRenderer3D.update(isopods, dt);
+  isopodRenderer3D.render();
+
   if (hand?.landmarks) {
     renderer.drawHand(hand.landmarks, hand.gesture === "pointing");
   }

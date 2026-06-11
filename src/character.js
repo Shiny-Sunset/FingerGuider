@@ -4,6 +4,8 @@ const AVOID_R = 90;
 const CURL_R = 35;
 const CURL_DUR = 2500;
 const BASE_SPEED = 1.8;
+const ISOPOD_AVOID_R = 80;
+const ISOPOD_PUSH_R = 35;
 
 export class Isopod {
   constructor(canvas) {
@@ -24,7 +26,7 @@ export class Isopod {
     }));
   }
 
-  update(dt, lines) {
+  update(dt, lines, others = []) {
     if (this.state === 'curled') {
       this.curlT += dt;
       if (this.curlT >= CURL_DUR) {
@@ -55,6 +57,18 @@ export class Isopod {
       return;
     }
 
+    // ダンゴムシ同士の反発（ステアリング）
+    for (const other of others) {
+      const dx = this.x - other.x;
+      const dy = this.y - other.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < ISOPOD_AVOID_R && dist > 0.5) {
+        const str = (1 - dist / ISOPOD_AVOID_R) ** 2;
+        avoidX += (dx / dist) * str * 1.5;
+        avoidY += (dy / dist) * str * 1.5;
+      }
+    }
+
     this.state = (avoidX !== 0 || avoidY !== 0) ? 'avoid' : 'walk';
     this.angle += (Math.random() - 0.5) * 0.08;
 
@@ -66,6 +80,18 @@ export class Isopod {
     const step = BASE_SPEED * (dt / 16.667);
     this.x += Math.cos(this.angle) * step;
     this.y += Math.sin(this.angle) * step;
+
+    // ダンゴムシ同士のめり込み解消
+    for (const other of others) {
+      const dx = this.x - other.x;
+      const dy = this.y - other.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < ISOPOD_PUSH_R && dist > 0.5) {
+        const overlap = (ISOPOD_PUSH_R - dist) / 2;
+        this.x += (dx / dist) * overlap;
+        this.y += (dy / dist) * overlap;
+      }
+    }
 
     const m = 25;
     if (this.x < m)           { this.x = m;           this.angle = Math.PI - this.angle; }

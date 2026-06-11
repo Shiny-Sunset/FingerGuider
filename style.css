@@ -43,6 +43,45 @@ canvas {
   background: rgba(0, 0, 0, 0.75);
 }
 
+#countCtrl {
+  position: fixed;
+  top: 52px;
+  right: 10px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#countCtrl button {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#countCtrl button:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+#countDisplay {
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 14px;
+  min-width: 28px;
+  text-align: center;
+}
+
 #ui {
   position: fixed;
   bottom: 20px;
