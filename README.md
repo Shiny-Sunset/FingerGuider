@@ -95,5 +95,5 @@ FingerGuider/
 
 ## 開発者
 
-https://github.com/Shiny-Sunset
-https://github.com/Seia1004
+- https://github.com/Shiny-Sunset
+- https://github.com/Seia1004
