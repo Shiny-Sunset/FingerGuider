@@ -42,6 +42,39 @@ export class Renderer {
     // 3D レンダラーに委譲
   }
 
+  // 餌（残量 amount に応じてサイズが縮む葉っぱ色のペレット）
+  drawFood(food) {
+    const ctx = this.ctx;
+    const r = 6 + food.amount * 6;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(food.x, food.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#efff96';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(60,90,30,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // プレビュー対象を囲む選択リング（脈動＋回転する破線）
+  drawHighlight(x, y) {
+    const ctx = this.ctx;
+    const t = Date.now() * 0.003;
+    const r = 46 + Math.sin(t * 2) * 3;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,170,40,0.95)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
   drawHand(landmarks, isPointing) {
     const ctx = this.ctx;
     const W = this.canvas.width;
