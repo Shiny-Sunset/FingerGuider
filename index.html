@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ダンゴムシシミュレーション</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <video id="camera" width="320" height="180" playsinline></video>
   <canvas id="canvas"></canvas>
@@ -15,9 +17,12 @@
     <span id="countDisplay">1</span>
     <button id="incBtn">＋</button>
   </div>
+  <button id="modelBtn">ダンゴムシ</button>
   <div id="ui">
     <p id="uiText">マウスをドラッグして線を引いてみよう</p>
   </div>
+  <div id="previewFrame"><span id="previewLabel">プレビュー</span></div>
   <script type="module" src="src/main.js"></script>
 </body>
+
 </html>

@@ -6,6 +6,10 @@ const CURL_DUR = 2500;
 const BASE_SPEED = 1.8;
 const ISOPOD_AVOID_R = 80;
 const ISOPOD_PUSH_R = 35;
+const FOOD_SENSE_R = 240;   // この距離以内の餌に気づいて寄っていく
+const FOOD_EAT_R = 26;      // この距離まで近づくと食べる
+const FOOD_PULL = 1.0;      // 餌へ向かうステアリングの強さ
+const EAT_RATE = 0.0006;    // 1ms あたりに減らす餌の量
 
 export class Isopod {
   constructor(canvas) {
@@ -26,7 +30,7 @@ export class Isopod {
     }));
   }
 
-  update(dt, lines, others = []) {
+  update(dt, lines, others = [], foods = []) {
     if (this.state === 'curled') {
       this.curlT += dt;
       if (this.curlT >= CURL_DUR) {
@@ -57,6 +61,9 @@ export class Isopod {
       return;
     }
 
+    // 線による回避が働いているか（餌より線を優先するため先に判定）
+    const lineThreat = avoidX !== 0 || avoidY !== 0;
+
     // ダンゴムシ同士の反発（ステアリング）
     for (const other of others) {
       const dx = this.x - other.x;
@@ -69,15 +76,43 @@ export class Isopod {
       }
     }
 
-    this.state = (avoidX !== 0 || avoidY !== 0) ? 'avoid' : 'walk';
-    this.angle += (Math.random() - 0.5) * 0.08;
-
-    if (avoidX !== 0 || avoidY !== 0) {
-      const targetAngle = Math.atan2(avoidY, avoidX);
-      this.angle = lerpAngle(this.angle, targetAngle, 0.15);
+    // 餌：脅威となる線が無ければ最寄りの餌へ寄り、十分近ければ食べる
+    let eating = false;
+    if (!lineThreat) {
+      let target = null;
+      let td = FOOD_SENSE_R;
+      for (const f of foods) {
+        if (f.amount <= 0) continue;
+        const d = Math.hypot(f.x - this.x, f.y - this.y);
+        if (d < td) { td = d; target = f; }
+      }
+      if (target) {
+        const fdx = target.x - this.x;
+        const fdy = target.y - this.y;
+        const fd = Math.hypot(fdx, fdy) || 1;
+        if (fd < FOOD_EAT_R) {
+          eating = true;
+          target.amount -= EAT_RATE * dt;
+        } else {
+          avoidX += (fdx / fd) * FOOD_PULL;
+          avoidY += (fdy / fd) * FOOD_PULL;
+        }
+      }
     }
 
-    const step = BASE_SPEED * (dt / 16.667);
+    if (eating) {
+      this.state = 'eating';
+      this.angle += (Math.random() - 0.5) * 0.02; // ほぼ静止、わずかに揺れる
+    } else {
+      this.state = lineThreat ? 'avoid' : 'walk';
+      this.angle += (Math.random() - 0.5) * 0.08;
+      if (avoidX !== 0 || avoidY !== 0) {
+        const targetAngle = Math.atan2(avoidY, avoidX);
+        this.angle = lerpAngle(this.angle, targetAngle, 0.15);
+      }
+    }
+
+    const step = (eating ? 0 : BASE_SPEED) * (dt / 16.667);
     this.x += Math.cos(this.angle) * step;
     this.y += Math.sin(this.angle) * step;
 
