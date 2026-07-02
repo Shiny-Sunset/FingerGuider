@@ -1,3 +1,5 @@
+import { mapX } from './handInput.js'
+
 const HAND_CONNECTIONS = [
   [0,1],[1,2],[2,3],[3,4],
   [5,6],[6,7],[7,8],
@@ -75,10 +77,15 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawHand(landmarks, isPointing) {
+  drawHand(landmarks, isPointing, cursorX, cursorY, offsetY) {
     const ctx = this.ctx;
     const W = this.canvas.width;
     const H = this.canvas.height;
+
+    // 実サイズのまま（拡大縮小せず）、カーソルと同じシフト量(offsetY)だけ手全体を平行移動する。
+    // カーソル計算（handInput.js）と同じ式・同じoffsetYを使うので、指先(8)は常にカーソルと一致する。
+    const px = (p) => mapX(p.x, W);
+    const py = (p) => p.y * H + offsetY;
 
     ctx.save();
 
@@ -88,8 +95,8 @@ export class Renderer {
     ctx.beginPath();
     for (const [ai, bi] of HAND_CONNECTIONS) {
       const a = landmarks[ai], b = landmarks[bi];
-      ctx.moveTo((1 - a.x) * W, a.y * H);
-      ctx.lineTo((1 - b.x) * W, b.y * H);
+      ctx.moveTo(px(a), py(a));
+      ctx.lineTo(px(b), py(b));
     }
     ctx.stroke();
 
@@ -97,15 +104,14 @@ export class Renderer {
     ctx.fillStyle = 'rgba(80,120,255,0.75)';
     for (const p of landmarks) {
       ctx.beginPath();
-      ctx.arc((1 - p.x) * W, p.y * H, 4, 0, Math.PI * 2);
+      ctx.arc(px(p), py(p), 4, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // 人差し指先端（landmark 8）の強調 — 描画中のみ
+    // 人差し指先端（landmark 8）の強調 — 描画中のみ。実際の描画位置（マッピング＋平滑化後）に合わせる
     if (isPointing) {
-      const tip = landmarks[8];
-      const tx = (1 - tip.x) * W;
-      const ty = tip.y * H;
+      const tx = cursorX;
+      const ty = cursorY;
       ctx.beginPath();
       ctx.arc(tx, ty, 13, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255,70,70,0.85)';

@@ -25,6 +25,18 @@ canvas {
   opacity: 0.85;
 }
 
+/* 指トラッキングが追従する範囲（カメラ上部）を示す枠。高さはJS側でTOP_RATIOから設定する */
+#cameraTrackZone {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  width: 320px;
+  z-index: 11;
+  border: 2px dashed turquoise;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
 #modeBtn {
   position: fixed;
   top: 10px;

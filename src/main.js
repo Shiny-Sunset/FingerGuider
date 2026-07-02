@@ -2,7 +2,7 @@ import { Line } from "./line.js";
 import { Isopod } from "./character.js";
 import { Food } from "./food.js";
 import { Renderer } from "./renderer.js";
-import { HandInput } from "./handInput.js";
+import { HandInput, mapX, TOP_RATIO } from "./handInput.js";
 import { IsopodRenderer3D, MODELS } from "./isopodRenderer3D.js";
 
 const canvas = document.getElementById("canvas");
@@ -72,6 +72,11 @@ handInput
   .init(cameraEl)
   .catch((err) => console.warn("カメラ初期化失敗（マウス操作で代替）:", err));
 
+// 指トラッキングが追従する範囲（カメラ上部）を示す枠。falseで非表示。
+const SHOW_TRACK_ZONE = false;
+const trackZoneEl = document.getElementById("cameraTrackZone");
+trackZoneEl.style.height = `${cameraEl.height * TOP_RATIO}px`;
+
 // モード切り替え
 let mode = "mouse";
 const modeBtn = document.getElementById("modeBtn");
@@ -83,10 +88,12 @@ function setMode(next) {
     modeBtn.textContent = "☝ 指モード";
     uiText.textContent = "人差し指を立てて線を引く / ✌️ピースで餌を置く";
     cameraEl.style.display = "block";
+    trackZoneEl.style.display = SHOW_TRACK_ZONE ? "block" : "none";
   } else {
     modeBtn.textContent = "🖱 マウスモード";
     uiText.textContent = "ドラッグで線を引く / 右クリックで餌を置く";
     cameraEl.style.display = "none";
+    trackZoneEl.style.display = "none";
     activeLine = null;
   }
 }
@@ -220,7 +227,7 @@ function loop(ts) {
   const gesture = hand?.gesture ?? null;
   if (gesture === "Victory" && prevHandGesture !== "Victory" && hand.landmarks) {
     const tip = hand.landmarks[8];
-    addFood((1 - tip.x) * canvas.width, tip.y * canvas.height);
+    addFood(mapX(tip.x, canvas.width), tip.y * canvas.height + hand.offsetY);
   }
   prevHandGesture = gesture;
 
@@ -256,7 +263,7 @@ function loop(ts) {
   isopodRenderer3D.render();
 
   if (hand?.landmarks) {
-    renderer.drawHand(hand.landmarks, hand.gesture === "pointing");
+    renderer.drawHand(hand.landmarks, hand.gesture === "pointing", hand.x, hand.y, hand.offsetY);
   }
 
   requestAnimationFrame(loop);
