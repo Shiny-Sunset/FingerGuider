@@ -5,6 +5,21 @@ import { Renderer } from "./renderer.js";
 import { HandInput, mapX, TOP_RATIO } from "./handInput.js";
 import { IsopodRenderer3D, MODELS } from "./isopodRenderer3D.js";
 
+// タイトル画面 ⇄ インタラクションモード画面の切り替え
+// 虫食いモードボタン（startInsectBtn）は友人が別途実装予定のためリスナーなし
+const titleScreen = document.getElementById("titleScreen");
+const gameScreen = document.getElementById("gameScreen");
+
+document.getElementById("startInteractionBtn").addEventListener("click", () => {
+  titleScreen.classList.add("hidden");
+  gameScreen.classList.remove("hidden");
+});
+
+document.getElementById("backToTitleBtn").addEventListener("click", () => {
+  gameScreen.classList.add("hidden");
+  titleScreen.classList.remove("hidden");
+});
+
 const canvas = document.getElementById("canvas");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;

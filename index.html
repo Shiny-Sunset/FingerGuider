@@ -4,25 +4,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ダンゴムシシミュレーション</title>
+  <title>Finger Guider</title>
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-  <video id="camera" width="320" height="180" playsinline></video>
-  <div id="cameraTrackZone"></div>
-  <canvas id="canvas"></canvas>
-  <button id="modeBtn">🖱 マウスモード</button>
-  <div id="countCtrl">
-    <button id="decBtn">−</button>
-    <span id="countDisplay">1</span>
-    <button id="incBtn">＋</button>
+  <div id="titleScreen">
+    <h1 id="titleLogo">Finger Guider</h1>
+    <div id="titleButtons">
+      <button id="startInteractionBtn" class="titleBtn">インタラクションモード</button>
+      <button id="startInsectBtn" class="titleBtn" disabled>虫食いモード</button>
+    </div>
   </div>
-  <button id="modelBtn">ダンゴムシ</button>
-  <div id="ui">
-    <p id="uiText">マウスをドラッグして線を引いてみよう</p>
+
+  <div id="gameScreen" class="hidden">
+    <video id="camera" width="320" height="180" playsinline></video>
+    <div id="cameraTrackZone"></div>
+    <canvas id="canvas"></canvas>
+    <button id="modeBtn">🖱 マウスモード</button>
+    <div id="countCtrl">
+      <button id="decBtn">−</button>
+      <span id="countDisplay">1</span>
+      <button id="incBtn">＋</button>
+    </div>
+    <button id="modelBtn">ダンゴムシ</button>
+    <button id="backToTitleBtn">← Topに戻る</button>
+    <div id="ui">
+      <p id="uiText">マウスをドラッグして線を引いてみよう</p>
+    </div>
+    <div id="previewFrame"><span id="previewLabel">プレビュー</span></div>
   </div>
-  <div id="previewFrame"><span id="previewLabel">プレビュー</span></div>
   <script type="module" src="src/main.js"></script>
 </body>
 
