@@ -39,7 +39,7 @@ canvas {
 
 #modeBtn {
   position: fixed;
-  top: 10px;
+  top: 54px;
   right: 10px;
   z-index: 20;
   padding: 8px 16px;
@@ -57,7 +57,7 @@ canvas {
 
 #countCtrl {
   position: fixed;
-  top: 52px;
+  top: 96px;
   right: 10px;
   z-index: 20;
   display: flex;
@@ -67,7 +67,7 @@ canvas {
 
 #modelBtn {
   position: fixed;
-  top: 98px;
+  top: 142px;
   right: 10px;
   z-index: 20;
   padding: 8px 16px;
@@ -80,6 +80,24 @@ canvas {
 }
 
 #modelBtn:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+#backToTitleBtn {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#backToTitleBtn:hover {
   background: rgba(0, 0, 0, 0.75);
 }
 
@@ -152,4 +170,59 @@ canvas {
   pointer-events: none;
   opacity: 0.75;
   white-space: nowrap;
+}
+
+.hidden {
+  display: none !important;
+}
+
+#titleScreen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(32px, 6vw, 72px);
+  background: #f5f0e8;
+  z-index: 30;
+}
+
+#titleLogo {
+  font-size: 10vw;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #3a2f28;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.08);
+  white-space: nowrap;
+}
+
+#titleButtons {
+  display: flex;
+  gap: clamp(16px, 3vw, 40px);
+}
+
+.titleBtn {
+  padding: clamp(16px, 2.2vw, 32px) clamp(28px, 4.4vw, 64px);
+  border: none;
+  border-radius: clamp(24px, 3vw, 36px);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: clamp(20px, 2.8vw, 40px);
+  font-weight: 600;
+  cursor: pointer;
+  min-width: clamp(220px, 28vw, 420px);
+}
+
+.titleBtn:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.titleBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.titleBtn:disabled:hover {
+  background: rgba(0, 0, 0, 0.55);
 }
