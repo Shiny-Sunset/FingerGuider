@@ -13,7 +13,7 @@
     <h1 id="titleLogo">Finger Guider</h1>
     <div id="titleButtons">
       <button id="startInteractionBtn" class="titleBtn">インタラクションモード</button>
-      <button id="startInsectBtn" class="titleBtn" disabled>虫食いモード</button>
+      <button id="startInsectBtn" class="titleBtn">虫食いモード</button>
     </div>
   </div>
 
@@ -34,6 +34,31 @@
     </div>
     <div id="previewFrame"><span id="previewLabel">プレビュー</span></div>
   </div>
+
+  <div id="insectScreen" class="hidden">
+    <video id="insectCam" playsinline></video>
+    <canvas id="insectCanvas"></canvas>
+    <p id="insectHint">顔を映すとダンゴムシが群がる…📷で撮影</p>
+    <button id="captureBtn">📷</button>
+    <button id="insectBackBtn">← Topに戻る</button>
+
+    <div id="cutin" class="hidden">
+      <div id="cutinBand">
+        <img id="cutinImg" class="hidden" alt="">
+        <span id="cutinFace">😋</span>
+        <span id="cutinText">いっただっきま〜す！</span>
+      </div>
+    </div>
+
+    <div id="resultOverlay" class="hidden">
+      <img id="resultImg" alt="虫食い写真">
+      <div id="resultButtons">
+        <button id="downloadBtn" class="resultBtn">⬇ ダウンロード</button>
+        <button id="skipBtn" class="resultBtn ghost">戻る</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="src/main.js"></script>
 </body>
 

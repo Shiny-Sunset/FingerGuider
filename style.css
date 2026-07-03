@@ -176,6 +176,205 @@ canvas {
   display: none !important;
 }
 
+/* ───────────── 虫食いモード ───────────── */
+#insectScreen {
+  position: fixed;
+  inset: 0;
+  background: #9fe8f3; /* 食べ跡（穴）から透ける暗色 */
+  z-index: 25;
+  overflow: hidden;
+}
+
+/* カメラ映像：全画面・cover・左右反転（自撮り鏡像） */
+#insectCam {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+/* 静止画＋虫食い穴を描く 2D レイヤー（3Dダンゴムシ overlay はこの上に載る） */
+#insectCanvas {
+  position: absolute;
+  inset: 0;
+}
+
+#insectHint {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 14px;
+  white-space: nowrap;
+  z-index: 12;
+  pointer-events: none;
+}
+
+#captureBtn {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-44px);
+  z-index: 13;
+  width: 76px;
+  height: 76px;
+  border: 4px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 30px;
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease;
+}
+
+#captureBtn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+#captureBtn:active:not(:disabled) {
+  transform: translateX(-50%) translateY(-44px) scale(0.92);
+}
+
+#captureBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#insectBackBtn {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 13;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#insectBackBtn:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+/* カットイン演出（ちびキャラの掛け声） */
+#cutin {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#cutinBand {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2vw, 28px);
+  padding: clamp(14px, 2.4vw, 30px) clamp(40px, 9vw, 160px);
+  background: linear-gradient(90deg, #ff8a3d, #ffcf5c);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  transform: skewX(-12deg) translateX(120%);
+  opacity: 0;
+}
+
+#cutin.show #cutinBand {
+  animation: cutinSlide 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+#cutinBand > * {
+  transform: skewX(12deg);
+}
+
+#cutinImg {
+  height: clamp(120px, 26vw, 340px);
+  width: auto;
+  max-width: 80vw;
+  object-fit: contain;
+}
+
+/* 画像カットインのときはオレンジ帯を消してイラストだけ見せる */
+#cutin.has-img #cutinBand {
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+#cutinFace {
+  font-size: clamp(48px, 8vw, 110px);
+  line-height: 1;
+}
+
+#cutinText {
+  font-size: clamp(28px, 5vw, 72px);
+  font-weight: 800;
+  color: #3a2200;
+  white-space: nowrap;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.4);
+}
+
+@keyframes cutinSlide {
+  0% { transform: skewX(-12deg) translateX(120%); opacity: 0; }
+  22% { transform: skewX(-12deg) translateX(0); opacity: 1; }
+  78% { transform: skewX(-12deg) translateX(0); opacity: 1; }
+  100% { transform: skewX(-12deg) translateX(-130%); opacity: 0; }
+}
+
+/* 完成画像＋ダウンロード選択 */
+#resultOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 22;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 3vh, 36px);
+  background: rgba(20, 14, 10, 0.82);
+}
+
+#resultImg {
+  max-width: 82vw;
+  max-height: 66vh;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  background: repeating-conic-gradient(#9fe8f3 0% 25%, #70a4ac 0% 50%) 50% / 24px 24px;
+}
+
+#resultButtons {
+  display: flex;
+  gap: clamp(16px, 3vw, 40px);
+}
+
+.resultBtn {
+  padding: clamp(12px, 1.6vw, 20px) clamp(24px, 4vw, 52px);
+  border: none;
+  border-radius: 30px;
+  background: #ff8a3d;
+  color: #3a2200;
+  font-size: clamp(16px, 2vw, 26px);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.resultBtn:hover {
+  filter: brightness(1.08);
+}
+
+.resultBtn.ghost {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
 #titleScreen {
   position: fixed;
   inset: 0;

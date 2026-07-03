@@ -173,7 +173,27 @@ walk ──線が近い(< 90px)──► avoid ──線が遠ざかる──►
   - ポインティング中のみシフト量を更新・平滑化することで、指の曲げ伸ばしやジェスチャー切り替えによる意図しない上下動を防止
 - ⬜ 表情のバリエーション拡充（怒り `eyelash_angry` 等）
 
-### Phase 4（予定）— カメラ顔検知 & 虫食いシミュレーション
+### Phase 4 ✅ 完了 — カメラ顔検知 & 虫食いシミュレーション
+
+**実装メモ**
+
+- `faceInput.js`（MediaPipe FaceDetector・`blaze_face_short_range.tflite`）を追加。
+- `insectMode.js` が独立した状態機械（live → cutin → eating → finish → result）として全体を制御。
+  インタラクションモードとは別画面（`#insectScreen`）・別の `IsopodRenderer3D`（プレビュー窓なし）を持つ。
+- 顔への群がりは `character.js` に追加した誘引点（attractor）引数で実現（線があれば従来どおり回避を優先）。
+- 撮影は表示（cover＋左右反転）と同じ絵を離れた Canvas に焼き、顔位置にダンゴムシが乗ると
+  `destination-out` でかじり穴を成長させる。完成画像は透過 PNG として `toDataURL` で保存。
+- 虫食いは「見えない餌（bait）」方式：撮影時に顔の楕円全体へ餌を格子状に敷き詰め、
+  ダンゴムシは未消化の餌へ誘導される（`character.js` の attractor は餌が持つ停止半径 `r` で止まる）。
+  ダンゴムシが近くにいる餌だけ `progress` が進み、その位置に穴が育つ（縁はぼかして自然に）。
+- 完成判定は時間ではなく「餌を食べ終えた割合」ベース：`FINISH_EATEN` を超えたら完成
+  （届かない場合の安全タイマー `EAT_MAX_MS` あり）。餌が顔全体を覆うので顔全体が食べられる。
+- カットインは `public/cutin_start.png` / `public/cutin_finish.png` を置くとその画像を使用。
+  無ければ絵文字＋掛け声バンドにフォールバック（DangoGirl.glb を使った 3D カットインは今後の拡張候補）。
+
+---
+
+（初期構想メモ）
 
 カメラを活用した新規インタラクション。MediaPipe FaceDetector を `handInput.js` と同じ
 パターンで追加し、顔の検知結果でダンゴムシの挙動を拡張する。

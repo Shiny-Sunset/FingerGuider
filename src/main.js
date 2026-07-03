@@ -4,9 +4,11 @@ import { Food } from "./food.js";
 import { Renderer } from "./renderer.js";
 import { HandInput, mapX, TOP_RATIO } from "./handInput.js";
 import { IsopodRenderer3D, MODELS } from "./isopodRenderer3D.js";
+import { InsectMode } from "./insectMode.js";
+import { pixelateCanvas } from "./pixelate.js";
+import { PIXEL_SIZE } from "./renderConfig.js";
 
-// タイトル画面 ⇄ インタラクションモード画面の切り替え
-// 虫食いモードボタン（startInsectBtn）は友人が別途実装予定のためリスナーなし
+// タイトル画面 ⇄ インタラクションモード ⇄ 虫食いモード の切り替え
 const titleScreen = document.getElementById("titleScreen");
 const gameScreen = document.getElementById("gameScreen");
 
@@ -17,6 +19,27 @@ document.getElementById("startInteractionBtn").addEventListener("click", () => {
 
 document.getElementById("backToTitleBtn").addEventListener("click", () => {
   gameScreen.classList.add("hidden");
+  titleScreen.classList.remove("hidden");
+});
+
+// 虫食いモード：カメラは handInput のストリームを共有し、無ければ自前で取得する
+const insectMode = new InsectMode({
+  getStream: async () =>
+    handInput.stream ??
+    (await navigator.mediaDevices.getUserMedia({
+      video: { width: 320, height: 180 },
+      audio: false,
+    })),
+});
+
+const startInsectBtn = document.getElementById("startInsectBtn");
+startInsectBtn.addEventListener("click", () => {
+  titleScreen.classList.add("hidden");
+  insectMode.enter();
+});
+
+document.getElementById("insectBackBtn").addEventListener("click", () => {
+  insectMode.exit();
   titleScreen.classList.remove("hidden");
 });
 
@@ -219,6 +242,7 @@ window.addEventListener("resize", () => {
     iso.h = canvas.height;
   }
   isopodRenderer3D.resize(canvas.width, canvas.height);
+  insectMode.onResize();
 });
 
 function loop(ts) {
@@ -280,6 +304,9 @@ function loop(ts) {
   if (hand?.landmarks) {
     renderer.drawHand(hand.landmarks, hand.gesture === "pointing", hand.x, hand.y, hand.offsetY);
   }
+
+  // 2Dレイヤー（背景・線・餌・手）をまとめてドット化（DS風）
+  pixelateCanvas(canvas, renderer.ctx, PIXEL_SIZE);
 
   requestAnimationFrame(loop);
 }
