@@ -32,6 +32,11 @@ export class HandInput {
     this.ready = false;
   }
 
+  // 取得済みのカメラストリーム（虫食いモードと共有するため）
+  get stream() {
+    return this.video?.srcObject ?? null;
+  }
+
   async init(videoEl) {
     this.video = videoEl;
 

@@ -11,10 +11,17 @@ const FOOD_EAT_R = 26;      // この距離まで近づくと食べる
 const FOOD_PULL = 1.0;      // 餌へ向かうステアリングの強さ
 const EAT_RATE = 0.0006;    // 1ms あたりに減らす餌の量
 
+// 誘引点（attractor）：虫食いモードで顔の中心へ群がらせるための強い引力。
+// 餌と違い減らず消えない。画面全体を感知範囲にし、到達すると食事状態にする。
+const ATTRACT_SENSE_R = 4000; // 事実上どこからでも感知
+const ATTRACT_PULL = 2.4;     // 誘引点へ向かうステアリングの強さ（餌より強い）
+
 export class Isopod {
-  constructor(canvas) {
+  constructor(canvas, sizeScale = 1) {
     this.w = canvas.width;
     this.h = canvas.height;
+    // 見た目の大きさ倍率。反発距離をこれに連動させる（虫食いモードで大きくするため）。
+    this.sizeScale = sizeScale;
     this.angle = Math.random() * Math.PI * 2;
     this.x = this.w / 2 + (Math.random() - 0.5) * 100;
     this.y = this.h / 2 + (Math.random() - 0.5) * 100;
@@ -30,7 +37,7 @@ export class Isopod {
     }));
   }
 
-  update(dt, lines, others = [], foods = []) {
+  update(dt, lines, others = [], foods = [], attractors = []) {
     if (this.state === 'curled') {
       this.curlT += dt;
       if (this.curlT >= CURL_DUR) {
@@ -64,13 +71,14 @@ export class Isopod {
     // 線による回避が働いているか（餌より線を優先するため先に判定）
     const lineThreat = avoidX !== 0 || avoidY !== 0;
 
-    // ダンゴムシ同士の反発（ステアリング）
+    // ダンゴムシ同士の反発（ステアリング）。反発距離はサイズ倍率に連動。
+    const avoidR = ISOPOD_AVOID_R * this.sizeScale;
     for (const other of others) {
       const dx = this.x - other.x;
       const dy = this.y - other.y;
       const dist = Math.hypot(dx, dy);
-      if (dist < ISOPOD_AVOID_R && dist > 0.5) {
-        const str = (1 - dist / ISOPOD_AVOID_R) ** 2;
+      if (dist < avoidR && dist > 0.5) {
+        const str = (1 - dist / avoidR) ** 2;
         avoidX += (dx / dist) * str * 1.5;
         avoidY += (dy / dist) * str * 1.5;
       }
@@ -100,6 +108,30 @@ export class Isopod {
       }
     }
 
+    // 誘引点（顔）：脅威の線が無ければ最寄りの顔へ群がる。半径 r 以内で「食事」状態。
+    if (!lineThreat && attractors.length) {
+      let target = null;
+      let td = ATTRACT_SENSE_R;
+      for (const a of attractors) {
+        const d = Math.hypot(a.x - this.x, a.y - this.y);
+        if (d < td) { td = d; target = a; }
+      }
+      if (target) {
+        const adx = target.x - this.x;
+        const ady = target.y - this.y;
+        const ad = Math.hypot(adx, ady) || 1;
+        // 誘引点の r（呼び出し側が指定する停止半径）以内に来たら食べる。
+        // それ以外は誘引点へ強く引き寄せる。個体同士の反発で自然に散らばる。
+        const eatR = target.r ?? FOOD_EAT_R;
+        if (ad < eatR) {
+          eating = true;
+        } else {
+          avoidX += (adx / ad) * ATTRACT_PULL;
+          avoidY += (ady / ad) * ATTRACT_PULL;
+        }
+      }
+    }
+
     if (eating) {
       this.state = 'eating';
       this.angle += (Math.random() - 0.5) * 0.02; // ほぼ静止、わずかに揺れる
@@ -112,17 +144,19 @@ export class Isopod {
       }
     }
 
-    const step = (eating ? 0 : BASE_SPEED) * (dt / 16.667);
+    // 移動速度もサイズ倍率に連動（大きい個体ほど速く歩く）
+    const step = (eating ? 0 : BASE_SPEED * this.sizeScale) * (dt / 16.667);
     this.x += Math.cos(this.angle) * step;
     this.y += Math.sin(this.angle) * step;
 
-    // ダンゴムシ同士のめり込み解消
+    // ダンゴムシ同士のめり込み解消。押し出し距離もサイズ倍率に連動。
+    const pushR = ISOPOD_PUSH_R * this.sizeScale;
     for (const other of others) {
       const dx = this.x - other.x;
       const dy = this.y - other.y;
       const dist = Math.hypot(dx, dy);
-      if (dist < ISOPOD_PUSH_R && dist > 0.5) {
-        const overlap = (ISOPOD_PUSH_R - dist) / 2;
+      if (dist < pushR && dist > 0.5) {
+        const overlap = (pushR - dist) / 2;
         this.x += (dx / dist) * overlap;
         this.y += (dy / dist) * overlap;
       }

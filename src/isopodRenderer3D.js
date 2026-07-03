@@ -3,6 +3,50 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 import dangomushiUrl from "../model/dangomushi.glb?url";
 import dangoGirlUrl from "../model/DangoGirl.glb?url";
+import { PIXEL_SIZE, TOON } from "./renderConfig.js";
+
+// トゥーン用の階調マップ（3段）。NearestFilter で段階的なセル調の陰影になる。
+function makeGradientMap() {
+  const steps = new Uint8Array([90, 170, 255]);
+  const tex = new THREE.DataTexture(steps, steps.length, 1, THREE.RedFormat);
+  tex.minFilter = THREE.NearestFilter;
+  tex.magFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  return tex;
+}
+const GRADIENT_MAP = TOON ? makeGradientMap() : null;
+
+// 既存マテリアルをトゥーン（MeshToonMaterial）へ変換。テクスチャ・色・名前を引き継ぐ
+// （口アトラスの検出や表情制御が name/map に依存しているため保持が必須）。
+function toToonMaterial(mat) {
+  if (!mat || mat.isMeshToonMaterial) return mat;
+  const toon = new THREE.MeshToonMaterial({
+    color: mat.color ? mat.color.clone() : new THREE.Color(0xffffff),
+    map: mat.map ?? null,
+    gradientMap: GRADIENT_MAP,
+    transparent: mat.transparent ?? false,
+    opacity: mat.opacity ?? 1,
+    alphaTest: mat.alphaTest ?? 0,
+    side: mat.side ?? THREE.FrontSide,
+  });
+  toon.name = mat.name;
+  if (mat.alphaMap) toon.alphaMap = mat.alphaMap;
+  if (mat.emissive && toon.emissive) toon.emissive.copy(mat.emissive);
+  if (mat.emissiveMap) toon.emissiveMap = mat.emissiveMap;
+  return toon;
+}
+
+// クローンしたシーンの全メッシュをトゥーンマテリアルへ差し替える。
+function applyToon(scene) {
+  if (!TOON) return;
+  scene.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    o.material = Array.isArray(o.material)
+      ? o.material.map(toToonMaterial)
+      : toToonMaterial(o.material);
+  });
+}
 
 // 切り替え可能なモデルの定義。targetSize はバウンディングボックス対角線の
 // ピクセル長、rotX/rotY はモデルを画面に正対させるための初期回転。
@@ -28,6 +72,9 @@ export const MODELS = {
       curlIn: "Curl_up1", // 丸まる
       curlLoop: "Curl_up_loop", // 丸まったまま頭を抱える（ループ）
       curlOut: "Curl_up2", // 丸まりから戻る
+      eatIn: "Eat1", // 餌にかがみ込む（導入）
+      eatLoop: "Eat_loop", // むしゃむしゃ食べる（ループ）
+      eatOut: "Eat2", // 食べ終えて戻る
     },
     // 口アトラス：1枚のテクスチャを cols×rows に分割し、offset で表示する口を切替。
     // index: 0=左上ノーマル(ニッコリ) / 1=右上笑い / 2=左下怒り(への字) / 3=右下困惑。
@@ -38,6 +85,7 @@ export const MODELS = {
 
 const LOCO_FADE = 0.25; // 移動アニメ間のクロスフェード秒数
 const CURL_FADE = 0.15; // 丸まり遷移のクロスフェード秒数
+const EAT_FADE = 0.2; // 食事遷移のクロスフェード秒数
 
 const PREVIEW_SIZE = 220; // プレビューウィンドウの一辺（px）
 const PREVIEW_MARGIN = 16; // 画面端からの余白（px）
@@ -49,6 +97,8 @@ export const DEFAULT_MODEL_KEY = "dangomushi";
 class IsopodModel {
   constructor(gltf, config) {
     const clonedScene = skeletonClone(gltf.scene);
+    // マテリアルをトゥーンへ差し替え（口アトラス検出より前に：name/map は保持される）
+    applyToon(clonedScene);
 
     const box = new THREE.Box3().setFromObject(clonedScene);
     const maxDim = box.getSize(new THREE.Vector3()).length();
@@ -203,6 +253,8 @@ class IsopodModel {
       this._uncurling = false;
       this._frozenPos = null;
       this._curlTimer = 0;
+      this._eatPhase = "none";
+      this._eatTimer = 0;
       const a = this._act;
 
       // ソースの丸まり位相を優先（uncurl中=out を取りこぼさないため）。
@@ -242,13 +294,27 @@ class IsopodModel {
         if (this._mouth) this.setMouth(this._mouth.sad);
       } else {
         this._curlPhase = "none";
-        const loco = this._locoFor(isopod.state);
-        if (loco) {
-          loco.reset().setLoop(THREE.LoopRepeat, Infinity).play();
-          this._loco = loco;
+        // 丸まっていない：食事中ならその食事フェーズへ、そうでなければ移動
+        const eatPhase =
+          src && src._anim
+            ? src._eatPhase
+            : isopod.state === "eating"
+              ? "loop"
+              : "none";
+        if (
+          eatPhase !== "none" &&
+          (a.eatIn || a.eatLoop || a.eatOut)
+        ) {
+          this._snapToEat(eatPhase, src);
+        } else {
+          const loco = this._locoFor(isopod.state);
+          if (loco) {
+            loco.reset().setLoop(THREE.LoopRepeat, Infinity).play();
+            this._loco = loco;
+          }
+          this.setExpression({});
+          if (this._mouth) this.setMouth(this._mouth.neutral);
         }
-        this.setExpression({});
-        if (this._mouth) this.setMouth(this._mouth.neutral);
       }
       this._snapExpression(src);
       return;
@@ -286,6 +352,36 @@ class IsopodModel {
     this._snapExpression(src);
   }
 
+  // プレビューを対象の食事フェーズへ即座にスナップ（snapToState から使用）
+  _snapToEat(phase, src) {
+    const a = this._act;
+    if (phase === "in" && a.eatIn) {
+      this._eatPhase = "in";
+      const t = src?._act?.eatIn?.time ?? 0;
+      this._playOnceAt(a.eatIn, t);
+      this._eatTimer = Math.max(0, a.eatIn.getClip().duration - t);
+      this.setExpression({ eye_happy: 1 });
+      if (this._mouth) this.setMouth(this._mouth.eat);
+    } else if (phase === "out" && a.eatOut) {
+      this._eatPhase = "out";
+      this._uncurling = true;
+      const t = src?._act?.eatOut?.time ?? 0;
+      this._playOnceAt(a.eatOut, t);
+      this._eatTimer = Math.max(0, a.eatOut.getClip().duration - t);
+      this.setExpression({});
+      if (this._mouth) this.setMouth(this._mouth.neutral);
+    } else {
+      this._eatPhase = "loop"; // むしゃむしゃ（ループ）
+      if (a.eatLoop) {
+        a.eatLoop.reset().setLoop(THREE.LoopRepeat, Infinity).play();
+      } else if (a.eatIn) {
+        this._playOnceAt(a.eatIn, a.eatIn.getClip().duration);
+      }
+      this.setExpression({ eye_happy: 1 });
+      if (this._mouth) this.setMouth(this._mouth.eat);
+    }
+  }
+
   // ── 口アトラス（テクスチャ offset で4分割の口を切替） ──────────
   _setupMouth(clonedScene, cfg) {
     this._mouth = null;
@@ -308,6 +404,7 @@ class IsopodModel {
         base: m.map.offset.clone(), // 作者が設定した初期オフセット（口0）
         neutral: cfg.neutral ?? 0,
         sad: cfg.sad ?? cfg.neutral ?? 0,
+        eat: cfg.eat ?? cfg.neutral ?? 0,
       };
     });
     if (this._mouth) {
@@ -344,6 +441,8 @@ class IsopodModel {
     this._loco = null; // 現在の移動アクション（idle/walk/run）
     this._curlPhase = "none"; // none | in | loop | out
     this._curlTimer = 0;
+    this._eatPhase = "none"; // none | in | loop | out
+    this._eatTimer = 0;
   }
 
   // 状態に対応する移動アクションを返す
@@ -420,6 +519,72 @@ class IsopodModel {
     }
   }
 
+  // ── 食事（Eat1 → Eat_loop → Eat2 の3フェーズ） ────────────────
+  _startEatIn() {
+    this._eatPhase = "in";
+    this._loco?.fadeOut(EAT_FADE);
+    this._loco = null;
+    // 食事中はうれしそうに（目を細めて口を開ける）
+    this.setExpression({ eye_happy: 1 });
+    if (this._mouth) this.setMouth(this._mouth.eat);
+    const a = this._act;
+    // 前サイクルの eatOut が最終フレームを保持したまま残らないよう落とす
+    a.eatOut?.fadeOut(EAT_FADE);
+    if (a.eatIn) {
+      this._playOnce(a.eatIn, EAT_FADE);
+      this._eatTimer = a.eatIn.getClip().duration;
+    } else {
+      this._eatTimer = 0;
+    }
+  }
+
+  _startEatLoop() {
+    this._eatPhase = "loop";
+    const a = this._act;
+    if (a.eatLoop) {
+      a.eatIn?.fadeOut(EAT_FADE);
+      a.eatLoop
+        .reset()
+        .setLoop(THREE.LoopRepeat, Infinity)
+        .fadeIn(EAT_FADE)
+        .play();
+    }
+    // eatLoop が無ければ eatIn の最終フレームを保持（clampWhenFinished）
+  }
+
+  _startEatOut(isopod) {
+    this._eatPhase = "out";
+    // Eat2（起き上がり）再生中は移動させない。丸まり戻りと同様に位置を固定し、
+    // 物理更新もスキップさせる（main.js が isUncurlingAt を見て止める）。
+    this._uncurling = true;
+    this._frozenPos = { x: isopod.x, y: isopod.y };
+    // 食べ終えたら表情・口を中立へ戻す
+    this.setExpression({});
+    if (this._mouth) this.setMouth(this._mouth.neutral);
+    const a = this._act;
+    a.eatIn?.fadeOut(EAT_FADE);
+    a.eatLoop?.fadeOut(EAT_FADE);
+    if (a.eatOut) {
+      this._playOnce(a.eatOut, EAT_FADE);
+      this._eatTimer = a.eatOut.getClip().duration;
+    } else {
+      this._eatTimer = 0;
+    }
+  }
+
+  // 食事アニメを即座に畳む（丸まりに割り込まれたときなど）
+  _stopEat() {
+    const a = this._act;
+    a.eatIn?.fadeOut(CURL_FADE);
+    a.eatLoop?.fadeOut(CURL_FADE);
+    a.eatOut?.fadeOut(CURL_FADE);
+    this._eatPhase = "none";
+    this._eatTimer = 0;
+    // Eat2 中に割り込まれた場合の固定を解除
+    this._uncurling = false;
+    this._frozenPos = null;
+  }
+
   _updateConfigured(isopod, dt, w, h) {
     // プレビューは位置・向きを固定（ターンテーブル回転はレンダラー側で付与）
     if (!this._preview) {
@@ -429,16 +594,27 @@ class IsopodModel {
     }
 
     const isCurled = isopod.state === "curled";
+    const isEating = isopod.state === "eating";
     const sec = dt / 1000;
 
-    // 遷移判定
+    // 丸まり遷移判定（丸まりは食事より優先。食事中に割り込まれたら畳む）
     if (isCurled && this._curlPhase === "none") {
+      if (this._eatPhase !== "none") this._stopEat();
       this._startCurlIn();
     } else if (!isCurled && (this._curlPhase === "in" || this._curlPhase === "loop")) {
       this._startCurlOut(isopod);
     }
 
-    // フェーズ進行
+    // 食事遷移判定（丸まっていないときのみ）
+    if (this._curlPhase === "none") {
+      if (isEating && this._eatPhase === "none") {
+        this._startEatIn();
+      } else if (!isEating && (this._eatPhase === "in" || this._eatPhase === "loop")) {
+        this._startEatOut(isopod);
+      }
+    }
+
+    // 丸まりフェーズ進行
     if (this._curlPhase === "in") {
       this._curlTimer -= sec;
       if (this._curlTimer <= 0) this._startCurlLoop();
@@ -453,17 +629,27 @@ class IsopodModel {
       }
     }
 
-    // 移動アニメ＋表情（丸まり中以外）
-    if (this._curlPhase === "none") {
-      this._setLoco(this._locoFor(isopod.state));
-      if (isopod.state === "eating") {
-        // 食事中はうれしそうに（目を細めて口を開ける）
-        this.setExpression({ eye_happy: 1 });
-        if (this._mouth) this.setMouth(this._mouth.eat ?? this._mouth.neutral);
-      } else {
-        this.setExpression({});
-        if (this._mouth) this.setMouth(this._mouth.neutral);
+    // 食事フェーズ進行
+    if (this._eatPhase === "in") {
+      this._eatTimer -= sec;
+      if (this._eatTimer <= 0) this._startEatLoop();
+    } else if (this._eatPhase === "out") {
+      this._eatTimer -= sec;
+      if (this._eatTimer <= 0) {
+        this._eatPhase = "none";
+        // Eat2 が終わったので固定を解除し、物理・移動を再開させる
+        this._uncurling = false;
+        this._frozenPos = null;
+        // 最終フレームを保持している eatOut を解放してから歩行へ戻す
+        this._act.eatOut?.fadeOut(LOCO_FADE);
       }
+    }
+
+    // 移動アニメ＋表情（丸まり・食事どちらも進行していないとき）
+    if (this._curlPhase === "none" && this._eatPhase === "none") {
+      this._setLoco(this._locoFor(isopod.state));
+      this.setExpression({});
+      if (this._mouth) this.setMouth(this._mouth.neutral);
     }
 
     if (dt) this.mixer.update(sec);
@@ -548,10 +734,15 @@ class IsopodModel {
 
 // シーン・レンダラーを1つだけ持ち、全ダンゴムシを管理する
 export class IsopodRenderer3D {
-  constructor(canvas2d) {
+  constructor(canvas2d, opts = {}) {
     this.canvas2d = canvas2d;
+    // preview:false でプレビュー窓（右下の小窓）を無効化する（虫食いモード用）
+    this._enablePreview = opts.preview !== false;
+    // このレンダラーだけモデルサイズを倍率で変える（虫食いモードで独立して調整するため）
+    this._sizeScale = opts.sizeScale ?? 1;
 
     this._canvas = document.createElement("canvas");
+    // 表示は原寸。ドット化の有無（image-rendering）は resize() で切り替える
     this._canvas.style.cssText =
       "position:absolute;top:0;left:0;pointer-events:none;";
     canvas2d.parentElement.appendChild(this._canvas);
@@ -610,8 +801,14 @@ export class IsopodRenderer3D {
       const pending = this._pendingAdds;
       this._pendingAdds = 0;
       for (let i = 0; i < pending; i++) this._createModel();
-      this._buildPreviewModel(gltf);
+      if (this._enablePreview) this._buildPreviewModel(gltf);
     });
+  }
+
+  // 現在モデルの設定に、このレンダラーのサイズ倍率を反映したものを返す
+  _scaledConfig(extra = {}) {
+    const base = MODELS[this._modelKey];
+    return { ...base, targetSize: base.targetSize * this._sizeScale, ...extra };
   }
 
   // プレビュー用の単体モデルを（再）生成し、カメラをフレーミングする
@@ -620,10 +817,7 @@ export class IsopodRenderer3D {
       this._previewModel.dispose(this._previewScene);
       this._previewModel = null;
     }
-    const model = new IsopodModel(gltf, {
-      ...MODELS[this._modelKey],
-      preview: true,
-    });
+    const model = new IsopodModel(gltf, this._scaledConfig({ preview: true }));
     this._previewScene.add(model.wrapper);
     this._previewModel = model;
     this._prevPreviewTarget = null; // 新モデルで現在の対象へ再スナップさせる
@@ -696,7 +890,7 @@ export class IsopodRenderer3D {
       this._pendingAdds++;
       return;
     }
-    const model = new IsopodModel(this._baseGltf, MODELS[this._modelKey]);
+    const model = new IsopodModel(this._baseGltf, this._scaledConfig());
     this._scene.add(model.wrapper);
     this._models.push(model);
   }
@@ -727,7 +921,7 @@ export class IsopodRenderer3D {
       this._pendingAdds = 0;
       this._baseGltf = gltf;
       for (let i = 0; i < count; i++) this._createModel();
-      this._buildPreviewModel(gltf);
+      if (this._enablePreview) this._buildPreviewModel(gltf);
     });
   }
 
@@ -772,12 +966,15 @@ export class IsopodRenderer3D {
     this._renderer.clear();
     this._renderer.render(this._scene, this._camera);
 
-    // プレビュー（右下・不透明背景の小窓）
+    // プレビュー（右下・不透明背景の小窓）。低解像度バッファなので px比を掛ける。
     if (this._previewModel) {
-      const x = w - PREVIEW_SIZE - PREVIEW_MARGIN;
-      const y = PREVIEW_MARGIN; // WebGL のビューポート原点は左下
-      this._renderer.setViewport(x, y, PREVIEW_SIZE, PREVIEW_SIZE);
-      this._renderer.setScissor(x, y, PREVIEW_SIZE, PREVIEW_SIZE);
+      const r = this._pxRatio ?? 1;
+      const pv = PREVIEW_SIZE * r;
+      const pm = PREVIEW_MARGIN * r;
+      const x = w - pv - pm;
+      const y = pm; // WebGL のビューポート原点は左下
+      this._renderer.setViewport(x, y, pv, pv);
+      this._renderer.setScissor(x, y, pv, pv);
       this._renderer.setScissorTest(true);
       this._renderer.setClearColor(0x2b2622, 1);
       this._renderer.clear();
@@ -787,9 +984,19 @@ export class IsopodRenderer3D {
   }
 
   resize(w, h) {
-    this._canvas.width = w;
-    this._canvas.height = h;
-    this._renderer.setSize(w, h);
+    // PIXEL_SIZE>=1：低解像度バッファ＋ニアレスト拡大でドット化（DS風）。
+    // PIXEL_SIZE<1：ピクセル化オフ。デバイス解像度で描いてくっきり表示する。
+    const pixelate = PIXEL_SIZE >= 1;
+    const P = pixelate ? PIXEL_SIZE : 1;
+    const dpr = pixelate ? 1 : window.devicePixelRatio || 1;
+    const lw = Math.max(1, Math.round((w / P) * dpr));
+    const lh = Math.max(1, Math.round((h / P) * dpr));
+    this._renderer.setSize(lw, lh, false); // バッファ解像度のみ設定。style は触らない
+    this._canvas.style.width = w + "px"; // 表示は常に原寸
+    this._canvas.style.height = h + "px";
+    this._canvas.style.imageRendering = pixelate ? "pixelated" : "auto";
+    this._pxRatio = lw / w; // バッファ／原寸（プレビューのスケール用）
+    // カメラのワールド境界は原寸のまま＝座標系・見た目の位置は不変
     this._camera.left = -w / 2;
     this._camera.right = w / 2;
     this._camera.top = h / 2;
