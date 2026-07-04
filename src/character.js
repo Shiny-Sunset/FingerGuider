@@ -2,6 +2,10 @@ const N_SEGS = 8;
 const SEG_GAP = 13;
 const AVOID_R = 90;
 const CURL_R = 35;
+// 交替性転向反応：線を避けるとき、法線（線から離れる向き）に加えて
+// 接線（線に沿う向き）へも逃げ、その左右を接触のたびに交互に切り替える。
+const LINE_NORMAL_W = 1.0;  // 線から離れる力（法線方向）
+const LINE_TANGENT_W = 1.4; // 線に沿って逃げる力（接線方向）。この値が“曲がり”の強さ
 const CURL_DUR = 2500;
 const BASE_SPEED = 1.8;
 const ISOPOD_AVOID_R = 80;
@@ -28,6 +32,9 @@ export class Isopod {
     this.segs = this._initSegs();
     this.state = 'walk';
     this.curlT = 0;
+    // 交替性転向反応の状態
+    this.turnDir = Math.random() < 0.5 ? 1 : -1; // 現在の回頭の左右（±1）
+    this._wasNearLine = false; // 前フレームで線に接触していたか（ターンの立ち上がり検出）
   }
 
   _initSegs() {
@@ -48,6 +55,7 @@ export class Isopod {
     }
 
     let avoidX = 0, avoidY = 0;
+    let lineX = 0, lineY = 0; // 線からの回避（法線）だけを先に集める
     let closestDist = Infinity;
 
     for (const line of lines) {
@@ -57,8 +65,8 @@ export class Isopod {
       if (d < AVOID_R) {
         const dir = line.avoidDirection(this.x, this.y);
         const str = (1 - d / AVOID_R) ** 2;
-        avoidX += dir.x * str;
-        avoidY += dir.y * str;
+        lineX += dir.x * str;
+        lineY += dir.y * str;
       }
     }
 
@@ -69,7 +77,21 @@ export class Isopod {
     }
 
     // 線による回避が働いているか（餌より線を優先するため先に判定）
-    const lineThreat = avoidX !== 0 || avoidY !== 0;
+    const lineThreat = lineX !== 0 || lineY !== 0;
+
+    // ── 交替性転向反応 ─────────────────────────────────────────
+    // 線に触れた瞬間、前回と逆の左右へ回頭して線沿いに逃げる（ダンゴムシ特有の習性）。
+    if (lineThreat) {
+      if (!this._wasNearLine) this.turnDir = -this.turnDir; // 新たな接触ごとに左右を反転
+      this._wasNearLine = true;
+      const ln = Math.hypot(lineX, lineY) || 1;
+      const nx = lineX / ln, ny = lineY / ln;                 // 線から離れる法線
+      const tx = -ny * this.turnDir, ty = nx * this.turnDir;  // 法線を90°回した接線（左右は turnDir で交替）
+      avoidX += nx * LINE_NORMAL_W + tx * LINE_TANGENT_W;
+      avoidY += ny * LINE_NORMAL_W + ty * LINE_TANGENT_W;
+    } else {
+      this._wasNearLine = false;
+    }
 
     // ダンゴムシ同士の反発（ステアリング）。反発距離はサイズ倍率に連動。
     const avoidR = ISOPOD_AVOID_R * this.sizeScale;

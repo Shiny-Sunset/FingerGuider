@@ -24,9 +24,12 @@ const FINISH_MS = 1600; // 完成カットインの長さ
 
 // 虫食いは「顔全体に敷いた“見えない餌（bait）”を食べ終わったか」で判定する。
 // 各餌はダンゴムシが近くにいる間だけ食べ進み、その位置に穴が育つ。
-const BAIT_HOLE_FRAC = 0.24; // 各餌の穴の目標半径 ＝ 顔サイズ × これ
-const BAIT_SPACING_FRAC = 0.25; // 餌の間隔 ＝ 顔サイズ × これ（穴同士が重なって顔全体を覆う）
-const BAIT_MARGIN = 1.2; // 顔の輪郭より少し外側まで餌を置く
+// 穴の半径（px）は顔の大きさに関係なく一定で、ダンゴムシの体サイズ（DANGO_SIZE）だけで決まる。
+// ＝「ダンゴムシ1体がかじった跡」の大きさ。体を大きくすれば穴も大きくなる。
+const BAIT_HOLE_R = 15 * DANGO_SIZE; // 各餌の穴の目標半径（一定）
+// 餌の敷き間隔（px）。穴半径を基準にすることで、顔の大小に関わらず穴が程よく重なって覆う。
+const BAIT_SPACING = BAIT_HOLE_R * 1.05;
+const BAIT_MARGIN = 1.2; // 顔の輪郭より少し外側まで餌を置く（餌を敷き詰める“範囲”は顔サイズ依存でOK）
 const BAIT_STOP_FRAC = 1.3; // ダンゴムシが餌の中心から止まる距離 ＝ 穴半径 × これ
 const BAIT_EAT_REACH = 1.6; // この距離（穴半径×これ）以内にダンゴムシがいれば食べ進む
 const BAIT_EAT_SPEED = 0.0022; // 1ms あたりに食べ進む量（progress 0→1）
@@ -38,9 +41,13 @@ const EAT_MIN_MS = 1500; // 早すぎる完成を防ぐ最短時間
 const CUTIN_IMG_START = `${import.meta.env.BASE_URL}cutin_start.png`;
 const CUTIN_IMG_FINISH = `${import.meta.env.BASE_URL}cutin_finish.png`;
 
-// 完成写真に載せるちびキャラ（ドヤ顔＋ピース）。public/chibi_pose.png を置くと使われる。
-// 無ければ何も載せずに写真を完成させる。
-const CHIBI_POSE_IMG = `${import.meta.env.BASE_URL}chibi_pose.png`;
+// 完成写真に載せるちびキャラ（ドヤ顔＋ピース）。ここに列挙したファイルを public/ に置くと、
+// 撮影ごとに“読み込めたものの中から”1枚がランダムで選ばれる。増やしたいときは配列に追記。
+// どれも読めなければ何も載せずに写真を完成させる。
+const CHIBI_POSE_FILES = ["chibi_pose.png", "chibi_pose2.png"];
+const CHIBI_POSE_IMGS = CHIBI_POSE_FILES.map(
+  (f) => `${import.meta.env.BASE_URL}${f}`
+);
 const CHIBI_SIDE = "right"; // "right" か "left"：写真のどちら側に載せるか
 const CHIBI_HEIGHT_FRAC = 0.55; // ちびキャラの高さ ＝ 写真の高さ × これ
 
@@ -79,9 +86,14 @@ export class InsectMode {
     this.baits = []; // 顔全体に敷く見えない餌 [{x,y,r,cr,progress,seed}]
     this._resultUrl = null;
 
-    // 完成写真に載せるちびキャラ画像を先読みしておく（無ければ naturalWidth=0）
-    this.chibiImg = new Image();
-    this.chibiImg.src = CHIBI_POSE_IMG;
+    // 完成写真に載せるちびキャラ画像を全部先読みしておく（読めないものは naturalWidth=0）。
+    // this.chibiImg は撮影ごとに _pickChibi() でランダム確定する。
+    this.chibiImgs = CHIBI_POSE_IMGS.map((src) => {
+      const im = new Image();
+      im.src = src;
+      return im;
+    });
+    this.chibiImg = null;
 
     this.captureBtn.addEventListener("click", () => this._onCapture());
     document
@@ -213,7 +225,7 @@ export class InsectMode {
     this.captureBtn.disabled = true;
     this.hint.classList.add("hidden");
 
-    this._showCutin("いっただっきま〜す！", "😋", CUTIN_IMG_START);
+    this._showCutin("やっちゃえ～！", "😆", CUTIN_IMG_START);
     this.state = CUTIN;
     this._phaseEnd = performance.now() + CUTIN_MS;
   }
@@ -231,7 +243,7 @@ export class InsectMode {
   _startFinish() {
     this._setDangoCount(0);
     this._buildResult();
-    this._showCutin("ごちそうさま！✌", "😆", CUTIN_IMG_FINISH);
+    this._showCutin("Finish！", "😙", CUTIN_IMG_FINISH);
     this.state = FINISH;
     this._phaseEnd = performance.now() + FINISH_MS;
   }
@@ -383,6 +395,15 @@ export class InsectMode {
     }
   }
 
+  // 撮影ごとに、読み込めているちびキャラ画像の中から1枚をランダムで選ぶ。
+  // 1枚も読めていなければ null（＝この写真にはキャラを載せない）。
+  _pickChibi() {
+    const ready = this.chibiImgs.filter((im) => im.complete && im.naturalWidth);
+    this.chibiImg = ready.length
+      ? ready[(Math.random() * ready.length) | 0]
+      : null;
+  }
+
   // ちびキャラ（ドヤ顔＋ピース）を写真の右端 or 左端・下寄せで描く。
   _drawChibiPose(ctx, W, H) {
     const img = this.chibiImg;
@@ -416,19 +437,24 @@ export class InsectMode {
   // 顔全体（楕円）に見えない餌を格子状に敷き詰める。撮影時に一度だけ作る。
   _buildBaits() {
     this.baits = [];
+    const W = this.canvas.width;
+    const H = this.canvas.height;
     for (const f of this.faces) {
+      // 餌を敷き詰める“範囲”だけ顔サイズに合わせる（穴1個の大きさは一定）
       const rx = f.rx * BAIT_MARGIN;
       const ry = f.ry * BAIT_MARGIN;
-      const s = (rx + ry) / 2; // 顔の代表サイズ
-      const holeR = s * BAIT_HOLE_FRAC;
-      const step = s * BAIT_SPACING_FRAC;
+      const step = BAIT_SPACING;
       for (let dx = -rx; dx <= rx; dx += step) {
         for (let dy = -ry; dy <= ry; dy += step) {
           if ((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) > 1) continue;
+          const x = f.x + dx + (Math.random() - 0.5) * step * 0.5;
+          const y = f.y + dy + (Math.random() - 0.5) * step * 0.5;
+          // 画面外の餌はダンゴムシが到達できず完成判定も進まないので置かない
+          if (x < 0 || x > W || y < 0 || y > H) continue;
           this.baits.push({
-            x: f.x + dx + (Math.random() - 0.5) * step * 0.5,
-            y: f.y + dy + (Math.random() - 0.5) * step * 0.5,
-            r: holeR * (0.85 + Math.random() * 0.3),
+            x,
+            y,
+            r: BAIT_HOLE_R, // 顔の大きさに依らず一定
             cr: 0, // 現在の穴半径
             progress: 0, // 0=手つかず 1=食べ終わり
           });
@@ -474,8 +500,9 @@ export class InsectMode {
     const g = out.getContext("2d");
     g.drawImage(this.basePhoto, 0, 0);
     this._punchHoles(g); // basePhoto は画面と同サイズなので餌座標がそのまま合う
+    this._pickChibi(); // この撮影に使うちびキャラを1枚ランダムで確定
     this._drawChibiPose(g, W, H); // ドヤ顔ちびキャラを載せて完成
-    pixelateCanvas(out, g, PIXEL_SIZE); // 画面と同じDS風ドット化で保存
+    pixelateCanvas(out, g, PIXEL_SIZE); // 画面と同じドット化で保存
     if (this._resultUrl) URL.revokeObjectURL(this._resultUrl);
     this._resultUrl = out.toDataURL("image/png");
   }

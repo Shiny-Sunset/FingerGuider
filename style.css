@@ -276,37 +276,58 @@ canvas {
   overflow: hidden;
 }
 
-#cutinBand {
+/* 帯とキャラをひとまとめにして左から横切らせる層（skew は掛けない＝キャラは直立） */
+#cutinStage {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: clamp(12px, 2vw, 28px);
-  padding: clamp(14px, 2.4vw, 30px) clamp(40px, 9vw, 160px);
-  background: linear-gradient(90deg, #ff8a3d, #ffcf5c);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-  transform: skewX(-12deg) translateX(120%);
+  justify-content: center;
+  transform: translateX(135%);
   opacity: 0;
 }
 
-#cutin.show #cutinBand {
+#cutin.show #cutinStage {
   animation: cutinSlide 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+#cutinBand {
+  position: relative; /* 背後に潜らせるキャラ画像の位置基準 */
+  z-index: 0; /* stacking context を作り、キャラ(z-index:-1)を帯背景の裏へ */
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2vw, 28px);
+  padding: clamp(14px, 2.4vw, 30px) clamp(60px, 12vw, 220px);
+  min-height: clamp(64px, 11vw, 140px); /* 画像だけのときも帯の厚みを確保 */
+  background: linear-gradient(90deg, #ff8a3d, #ffcf5c);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  transform: skewX(-12deg);
 }
 
 #cutinBand > * {
   transform: skewX(12deg);
 }
 
+/* キャラ画像：帯の“中から”上半身が生えているように見せる。
+   位置の基準は親の #cutinBand（帯そのもの）なので、帯にピタッと吸い付く。
+   ・z-index:-1 で帯のオレンジ背景より裏 → 腰から下は帯に隠れる
+   ・clip-path で裾を切り落とし、帯からはみ出さないようトリミング
+   下の 3 つが見え方の調整ポイント（画像を差し替えたらここを触る）：
+     height … キャラの大きさ
+     bottom … 帯への沈み込み。マイナスを大きくするほど深く沈む（＝上半身の出方が減る）
+     clip-path の 3 番目の値 … 裾をどこで切るか（大きいほど足元を多く隠す） */
 #cutinImg {
-  height: clamp(120px, 26vw, 340px);
+  position: absolute;
+  left: 60%;
+  bottom: -120%;
+  height: clamp(220px, 46vw, 560px);
   width: auto;
-  max-width: 80vw;
+  max-width: 90vw;
   object-fit: contain;
-}
-
-/* 画像カットインのときはオレンジ帯を消してイラストだけ見せる */
-#cutin.has-img #cutinBand {
-  background: none;
-  box-shadow: none;
-  padding: 0;
+  transform: translateX(-50%) skewX(12deg);
+  transform-origin: bottom center;
+  clip-path: inset(0 0 30% 0);
+  z-index: -1;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
 }
 
 #cutinFace {
@@ -323,10 +344,10 @@ canvas {
 }
 
 @keyframes cutinSlide {
-  0% { transform: skewX(-12deg) translateX(120%); opacity: 0; }
-  22% { transform: skewX(-12deg) translateX(0); opacity: 1; }
-  78% { transform: skewX(-12deg) translateX(0); opacity: 1; }
-  100% { transform: skewX(-12deg) translateX(-130%); opacity: 0; }
+  0% { transform: translateX(135%); opacity: 0; }
+  20% { transform: translateX(0); opacity: 1; }
+  80% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(-135%); opacity: 0; }
 }
 
 /* 完成画像＋ダウンロード選択 */
