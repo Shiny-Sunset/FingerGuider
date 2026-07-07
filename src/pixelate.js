@@ -1,4 +1,4 @@
-// 2D キャンバスをその場でドット化（DS風）するユーティリティ。
+// 2D キャンバスをその場でドット化するユーティリティ。
 // 一度低解像度へ縮小し、ニアレスト補間で原寸へ戻すことでブロック状にする。
 // 座標系は一切変えないので、描画コードはそのまま使える（フレーム最後に1回呼ぶだけ）。
 
@@ -6,7 +6,7 @@ const _tmp = document.createElement("canvas");
 const _tctx = _tmp.getContext("2d");
 
 // canvas に描き終えた内容を pixel px 角のブロックに量子化する。
-// pixel <= 1 なら何もしない。透明度も保持する。
+// pixel < 1 なら何もしない。透明度も保持する。
 export function pixelateCanvas(canvas, ctx, pixel) {
   const W = canvas.width;
   const H = canvas.height;

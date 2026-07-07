@@ -8,14 +8,14 @@ import { PIXEL_SIZE } from "./renderConfig.js";
 const LIVE = "live"; // カメラ映像＋顔にダンゴムシが群がる
 const CUTIN = "cutin"; // 撮影直後：ちびキャラのカットイン
 const EATING = "eating"; // 静止画の顔をダンゴムシが虫食い
-const FINISH = "finish"; // 完成カットイン（ごちそうさま）
+const FINISH = "finish"; // 完成カットイン
 const RESULT = "result"; // ダウンロード選択
 
 const LIVE_DANGO = 20; // ライブモードで徘徊させる数
 const DANGO_PER_FACE = 20; // 捕食時、顔1つあたりのダンゴムシ数
 const MAX_EAT_DANGO = 12;
 
-// 虫食いモードだけのダンゴムシの大きさ倍率（インタラクションモードには影響しない）。
+// 虫食いモードだけのダンゴムシの大きさ倍率
 // 1.0＝通常サイズ。大きくすると顔を覆う穴も大きく・早くなる。
 const DANGO_SIZE = 2.0;
 
@@ -26,7 +26,7 @@ const FINISH_MS = 1600; // 完成カットインの長さ
 // 各餌はダンゴムシが近くにいる間だけ食べ進み、その位置に穴が育つ。
 // 穴の半径（px）は顔の大きさに関係なく一定で、ダンゴムシの体サイズ（DANGO_SIZE）だけで決まる。
 // ＝「ダンゴムシ1体がかじった跡」の大きさ。体を大きくすれば穴も大きくなる。
-const BAIT_HOLE_R = 15 * DANGO_SIZE; // 各餌の穴の目標半径（一定）
+const BAIT_HOLE_R = 15 * DANGO_SIZE; // 各餌の穴の目標半径
 // 餌の敷き間隔（px）。穴半径を基準にすることで、顔の大小に関わらず穴が程よく重なって覆う。
 const BAIT_SPACING = BAIT_HOLE_R * 1.05;
 const BAIT_MARGIN = 1.2; // 顔の輪郭より少し外側まで餌を置く（餌を敷き詰める“範囲”は顔サイズ依存でOK）
@@ -37,13 +37,11 @@ const FINISH_EATEN = 0.99; // 餌のこの割合を食べ終わったら完成
 const EAT_MAX_MS = 16000; // 万一食べきれない場合の安全タイマー
 const EAT_MIN_MS = 1500; // 早すぎる完成を防ぐ最短時間
 
-// カットイン画像（public/ に置くと自動で使われる。無ければ絵文字にフォールバック）。
+// カットイン画像
 const CUTIN_IMG_START = `${import.meta.env.BASE_URL}cutin_start.png`;
 const CUTIN_IMG_FINISH = `${import.meta.env.BASE_URL}cutin_finish.png`;
 
-// 完成写真に載せるちびキャラ（ドヤ顔＋ピース）。ここに列挙したファイルを public/ に置くと、
-// 撮影ごとに“読み込めたものの中から”1枚がランダムで選ばれる。増やしたいときは配列に追記。
-// どれも読めなければ何も載せずに写真を完成させる。
+// 完成写真に載せるちびキャラ（ドヤ顔＋ピース）
 const CHIBI_POSE_FILES = ["chibi_pose.png", "chibi_pose2.png"];
 const CHIBI_POSE_IMGS = CHIBI_POSE_FILES.map(
   (f) => `${import.meta.env.BASE_URL}${f}`
@@ -95,6 +93,14 @@ export class InsectMode {
     });
     this.chibiImg = null;
 
+    // カットイン画像の先読み
+    this.cutinImgCache = {};
+    for (const url of [CUTIN_IMG_START, CUTIN_IMG_FINISH]) {
+      const im = new Image();
+      im.src = url;
+      this.cutinImgCache[url] = im;
+    }
+
     this.captureBtn.addEventListener("click", () => this._onCapture());
     document
       .getElementById("downloadBtn")
@@ -104,7 +110,7 @@ export class InsectMode {
       .addEventListener("click", () => this._backToLive());
   }
 
-  // ── 出入り ───────────────────────────────────────────────
+  // 出入り ───────────────────────────────────────────────
   async enter() {
     this.active = true;
     this.screen.classList.remove("hidden");
@@ -166,7 +172,7 @@ export class InsectMode {
     if (this.active && this.state === LIVE) this._resize();
   }
 
-  // ── ダンゴムシ数の管理（3D モデルと同期） ──────────────────
+  // ダンゴムシ数の管理（3D モデルと同期） ──────────────────
   _setDangoCount(n) {
     while (this.isopods.length < n) {
       this.isopods.push(new Isopod(this.canvas, DANGO_SIZE));
@@ -195,7 +201,7 @@ export class InsectMode {
     }
   }
 
-  // ── 状態遷移 ─────────────────────────────────────────────
+  // 状態遷移 ─────────────────────────────────────────────
   _toLiveState() {
     this.state = LIVE;
     this.baits = [];
@@ -243,7 +249,7 @@ export class InsectMode {
   _startFinish() {
     this._setDangoCount(0);
     this._buildResult();
-    this._showCutin("Finish！", "😙", CUTIN_IMG_FINISH);
+    this._showCutin("Finish!!", "😙", CUTIN_IMG_FINISH);
     this.state = FINISH;
     this._phaseEnd = performance.now() + FINISH_MS;
   }
@@ -260,7 +266,7 @@ export class InsectMode {
     this._lastTime = null;
   }
 
-  // ── メインループ ─────────────────────────────────────────
+  // メインループ ─────────────────────────────────────────
   _loop(ts) {
     if (!this.active) return;
     const dt = this._lastTime == null ? 16.667 : Math.min(ts - this._lastTime, 100);
@@ -294,10 +300,10 @@ export class InsectMode {
       this._drawPhoto(); // 完成画像を背景に保持
     }
 
-    // 2Dレイヤー（カメラ／写真／穴）をまとめてドット化（DS風）
+    // 2Dレイヤー（カメラ／写真／穴）をまとめてドット化
     pixelateCanvas(this.canvas, this.ctx, PIXEL_SIZE);
 
-    // ダンゴムシ（3D）は撮影後の静止画の上にも描く＝顔を食べているように見える
+    // ダンゴムシは撮影後の静止画の上にも描く＝顔を食べているように見える
     this.renderer3d?.update(this.isopods, dt);
     this.renderer3d?.render();
 
@@ -312,7 +318,7 @@ export class InsectMode {
     }
   }
 
-  // ── 顔座標の変換（cover 表示＋左右反転に合わせる） ──────────
+  // 顔座標の変換（cover 表示＋左右反転に合わせる） ──────────
   _mapFaces(rawFaces) {
     const W = this.canvas.width;
     const H = this.canvas.height;
@@ -338,7 +344,7 @@ export class InsectMode {
     });
   }
 
-  // ── 撮影：表示（cover＋反転）と同じ絵を basePhoto に焼く ────
+  // 撮影：表示（cover＋反転）と同じ絵を basePhoto に焼く ────
   _capturePhoto() {
     const W = this.canvas.width;
     const H = this.canvas.height;
@@ -518,32 +524,45 @@ export class InsectMode {
     this._backToLive();
   }
 
-  // ── カットイン演出 ───────────────────────────────────────
-  // imgUrl を指定し、その画像が読み込めれば画像を主役に（絵文字＋テキストは隠す）。
-  // 読み込めなければ絵文字＋テキストにフォールバックする。
+  // カットイン演出 ───────────────────────────────────────
   _showCutin(text, emoji, imgUrl) {
     this.cutinText.textContent = text;
     this.cutinFace.textContent = emoji;
-    // 既定は絵文字＋テキスト表示、画像は隠す
-    this.cutinText.classList.remove("hidden");
-    this.cutinFace.classList.remove("hidden");
-    this.cutinImg.classList.add("hidden");
-    this.cutin.classList.remove("has-img");
 
-    if (imgUrl) {
-      this.cutinImg.onload = () => {
-        this.cutinImg.classList.remove("hidden");
-        this.cutinFace.classList.add("hidden");
-        this.cutinText.classList.add("hidden");
-        this.cutin.classList.add("has-img");
-      };
-      this.cutinImg.onerror = () => {
-        this.cutinImg.classList.add("hidden");
-        this.cutinFace.classList.remove("hidden");
-        this.cutinText.classList.remove("hidden");
-        this.cutin.classList.remove("has-img");
-      };
+    // 先読み済みで読み込み完了している画像は、テキストを出さず最初から画像だけ表示する。
+    const pre = imgUrl ? this.cutinImgCache[imgUrl] : null;
+    const ready = pre && pre.complete && pre.naturalWidth > 0;
+
+    if (ready) {
+      this.cutinImg.onload = null;
+      this.cutinImg.onerror = null;
       this.cutinImg.src = imgUrl;
+      this.cutinImg.classList.remove("hidden");
+      this.cutinFace.classList.add("hidden");
+      this.cutinText.classList.add("hidden");
+      this.cutin.classList.add("has-img");
+    } else {
+      // 未ロード（or 画像なし）：まず絵文字＋テキストを出し、読み込めたら差し替える
+      this.cutinText.classList.remove("hidden");
+      this.cutinFace.classList.remove("hidden");
+      this.cutinImg.classList.add("hidden");
+      this.cutin.classList.remove("has-img");
+
+      if (imgUrl) {
+        this.cutinImg.onload = () => {
+          this.cutinImg.classList.remove("hidden");
+          this.cutinFace.classList.add("hidden");
+          this.cutinText.classList.add("hidden");
+          this.cutin.classList.add("has-img");
+        };
+        this.cutinImg.onerror = () => {
+          this.cutinImg.classList.add("hidden");
+          this.cutinFace.classList.remove("hidden");
+          this.cutinText.classList.remove("hidden");
+          this.cutin.classList.remove("has-img");
+        };
+        this.cutinImg.src = imgUrl;
+      }
     }
 
     this.cutin.classList.remove("hidden");

@@ -141,7 +141,7 @@ class IsopodModel {
     // 口アトラス（テクスチャ offset で口を切替）
     this._setupMouth(clonedScene, config.mouth);
 
-    // 設定済みアニメ制御（クリップ名で対応づけるモデル。例: ちびキャラ）
+    // 設定済みアニメ制御（クリップ名で対応づけるモデル）
     this._anim = config.anim ?? null;
     if (this._anim) {
       this._setupConfiguredAnim(clonedScene, gltf);
@@ -188,7 +188,7 @@ class IsopodModel {
     }
   }
 
-  // ── 表情（シェイプキー / モーフターゲット） ──────────────────
+  // 表情（シェイプキー / モーフターゲット） ──────────────────
   _setupMorphs(clonedScene) {
     // 名前 → 対象メッシュとインデックス。各影響度を cur から target へ補間する
     this._expr = {};
@@ -382,7 +382,7 @@ class IsopodModel {
     }
   }
 
-  // ── 口アトラス（テクスチャ offset で4分割の口を切替） ──────────
+  // 口アトラス（テクスチャ offset で4分割の口を切替） ──────────
   _setupMouth(clonedScene, cfg) {
     this._mouth = null;
     if (!cfg) return;
@@ -519,12 +519,12 @@ class IsopodModel {
     }
   }
 
-  // ── 食事（Eat1 → Eat_loop → Eat2 の3フェーズ） ────────────────
+  // 食事（Eat1 → Eat_loop → Eat2 の3フェーズ） ────────────────
   _startEatIn() {
     this._eatPhase = "in";
     this._loco?.fadeOut(EAT_FADE);
     this._loco = null;
-    // 食事中はうれしそうに（目を細めて口を開ける）
+    // 食事中はうれしそうに
     this.setExpression({ eye_happy: 1 });
     if (this._mouth) this.setMouth(this._mouth.eat);
     const a = this._act;

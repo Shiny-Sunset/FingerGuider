@@ -44,7 +44,7 @@ export class Renderer {
     // 3D レンダラーに委譲
   }
 
-  // 餌（残量 amount に応じてサイズが縮む葉っぱ色のペレット）
+  // 餌（残量 amount に応じてサイズが縮む緑色のペレット）
   drawFood(food) {
     const ctx = this.ctx;
     const r = 6 + food.amount * 6;
