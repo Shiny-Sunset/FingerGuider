@@ -34,7 +34,7 @@ const BAIT_STOP_FRAC = 1.3; // ダンゴムシが餌の中心から止まる距�
 const BAIT_EAT_REACH = 1.6; // この距離（穴半径×これ）以内にダンゴムシがいれば食べ進む
 const BAIT_EAT_SPEED = 0.0022; // 1ms あたりに食べ進む量（progress 0→1）
 const FINISH_EATEN = 0.99; // 餌のこの割合を食べ終わったら完成
-const EAT_MAX_MS = 16000; // 万一食べきれない場合の安全タイマー
+const EAT_MAX_MS = 17000; // 万一食べきれない場合の安全タイマー
 const EAT_MIN_MS = 1500; // 早すぎる完成を防ぐ最短時間
 
 // カットイン画像

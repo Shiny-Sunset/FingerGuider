@@ -288,7 +288,8 @@ export class Isopod {
     const head = this.segs[0];
     const r = 16 + t * 3;
 
-    const grad = ctx.createRadialGradient(head.x - 4, head.y - 4, 2, head.x, head.y, r);
+    const grad = ctx.createRadialGradient(head.x - 4, head.y - 4, 2, 
+      head.x, head.y, r);
     grad.addColorStop(0, 'hsl(28, 40%, 48%)');
     grad.addColorStop(1, 'hsl(28, 40%, 26%)');
 
