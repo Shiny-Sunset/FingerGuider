@@ -426,7 +426,7 @@ class IsopodModel {
     m.tex.offset.set(m.base.x + col / m.cols, m.base.y - row / m.rows);
   }
 
-  // ── 設定済みアニメ制御（ちびキャラ等） ───────────────────────
+  // 設定済みアニメ制御（ちびキャラ等） ───────────────────────
   _setupConfiguredAnim(clonedScene, gltf) {
     this.mixer = new THREE.AnimationMixer(clonedScene);
     const byName = {};
