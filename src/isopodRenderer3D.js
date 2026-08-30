@@ -984,7 +984,7 @@ export class IsopodRenderer3D {
   }
 
   resize(w, h) {
-    // PIXEL_SIZE>=1：低解像度バッファ＋ニアレスト拡大でドット化（DS風）。
+    // PIXEL_SIZE>=1：低解像度バッファ＋最近傍補間の拡大でドット化（DS風）。
     // PIXEL_SIZE<1：ピクセル化オフ。デバイス解像度で描いてくっきり表示する。
     const pixelate = PIXEL_SIZE >= 1;
     const P = pixelate ? PIXEL_SIZE : 1;
